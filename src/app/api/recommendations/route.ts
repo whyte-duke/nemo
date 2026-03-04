@@ -25,6 +25,11 @@ import { getTasteProfile } from "@/lib/recommendations/taste-profile";
 import { scoreItem } from "@/lib/recommendations/scorer";
 import type { ScoredItem, TMDbCandidateItem, CandidateFeatures } from "@/lib/recommendations/scorer";
 import type { TasteProfile } from "@/lib/recommendations/taste-profile";
+import {
+  loadSimilarityMap,
+  fetchAndCacheSimilarItems,
+} from "@/lib/recommendations/similarity";
+import type { LikedItemRef } from "@/lib/recommendations/similarity";
 
 const TMDB_BASE = process.env.NEXT_PUBLIC_TMDB_BASE_URL ?? "https://api.themoviedb.org/3";
 const TMDB_KEY  = process.env.NEXT_PUBLIC_TMDB_API_KEY ?? "";
@@ -67,8 +72,8 @@ export async function GET(request: NextRequest) {
   const [{ data: interacted }, { data: friends }] = await Promise.all([
     supabase
       .from("interactions")
-      .select("tmdb_id, media_type")
-      .eq("user_id", user.id) as Promise<{ data: Array<{ tmdb_id: number; media_type: string }> | null }>,
+      .select("tmdb_id, media_type, type")
+      .eq("user_id", user.id) as Promise<{ data: Array<{ tmdb_id: number; media_type: string; type: string | null }> | null }>,
     supabase
       .from("friendships")
       .select("user_id, friend_id")
@@ -100,13 +105,27 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 3. ── Candidats TMDB ──────────────────────────────────────────────────────
-  const [moviesP1, moviesP2, tvP1, tvP2] = await Promise.all([
+  // Top 10 liked items — base du calcul de similarité (interactions explicites)
+  const likedItems: LikedItemRef[] = (interacted ?? [])
+    .filter((r) => r.type === "like")
+    .slice(0, 10)
+    .map((r) => ({ tmdb_id: r.tmdb_id, media_type: r.media_type as "movie" | "tv" }));
+
+  // 3. ── Candidats TMDB + similarityMap (en parallèle) ─────────────────────
+  const [moviesP1, moviesP2, tvP1, tvP2, similarityMap] = await Promise.all([
     tmdbPage<TMDbCandidateItem>("/movie/popular", 1),
     tmdbPage<TMDbCandidateItem>("/movie/popular", 2),
     tmdbPage<TMDbCandidateItem>("/tv/popular", 1),
     tmdbPage<TMDbCandidateItem>("/tv/popular", 2),
+    loadSimilarityMap(likedItems),
   ]);
+
+  // Fire-and-forget : refresh similar_items pour les liked items périmés
+  // Batch de 3 pour respecter les rate limits TMDB (40 req/s)
+  for (let i = 0; i < likedItems.length; i += 3) {
+    const batch = likedItems.slice(i, i + 3);
+    void Promise.all(batch.map((item) => fetchAndCacheSimilarItems(item.tmdb_id, item.media_type)));
+  }
 
   const movieCandidates = [...moviesP1, ...moviesP2].filter(
     (m) => !excludedSet.has(`${m.id}-movie`)
@@ -135,10 +154,30 @@ export async function GET(request: NextRequest) {
   const scored: ScoredItem[] = [];
 
   for (const m of movieCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMap.get(`${m.id}-movie`), "movie", friendLikeMap, friendCount));
+    scored.push(scoreItem(
+      hasProfile ? profile : null,
+      m,
+      featureMap.get(`${m.id}-movie`),
+      "movie",
+      friendLikeMap,
+      friendCount,
+      similarityMap,
+      likedItems,
+      featureMap
+    ));
   }
   for (const m of tvCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMap.get(`${m.id}-tv`), "tv", friendLikeMap, friendCount));
+    scored.push(scoreItem(
+      hasProfile ? profile : null,
+      m,
+      featureMap.get(`${m.id}-tv`),
+      "tv",
+      friendLikeMap,
+      friendCount,
+      similarityMap,
+      likedItems,
+      featureMap
+    ));
   }
 
   scored.sort((a, b) => b.score - a.score);
