@@ -28,6 +28,11 @@ import { scoreItem } from "@/lib/recommendations/scorer";
 import { fetchCandidates, preFetchMissingFeatures } from "@/lib/recommendations/candidates";
 import type { ScoredItem, TMDbCandidateItem, CandidateFeatures } from "@/lib/recommendations/scorer";
 import type { TasteProfile } from "@/lib/recommendations/taste-profile";
+import {
+  loadSimilarityMap,
+  fetchAndCacheSimilarItems,
+} from "@/lib/recommendations/similarity";
+import type { LikedItemRef } from "@/lib/recommendations/similarity";
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
@@ -53,8 +58,8 @@ export async function GET(request: NextRequest) {
   const [{ data: interacted }, { data: friends }] = await Promise.all([
     supabase
       .from("interactions")
-      .select("tmdb_id, media_type")
-      .eq("user_id", user.id) as Promise<{ data: Array<{ tmdb_id: number; media_type: string }> | null }>,
+      .select("tmdb_id, media_type, type")
+      .eq("user_id", user.id) as Promise<{ data: Array<{ tmdb_id: number; media_type: string; type: string | null }> | null }>,
     supabase
       .from("friendships")
       .select("user_id, friend_id")
@@ -86,9 +91,25 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 3. ── Candidats TMDB diversifiés ─────────────────────────────────────────
+  // Top 10 liked items — base du calcul de similarité (interactions explicites)
+  const likedItems: LikedItemRef[] = (interacted ?? [])
+    .filter((r) => r.type === "like")
+    .slice(0, 10)
+    .map((r) => ({ tmdb_id: r.tmdb_id, media_type: r.media_type as "movie" | "tv" }));
+
+  // 3. ── Candidats TMDB diversifiés + similarityMap (en parallèle) ──────────
   // Sources : popular, top_rated, trending (×2 médias) + genre-based discover
-  const { movies: allMovies, tv: allTV } = await fetchCandidates(hasProfile ? profile : null);
+  const [{ movies: allMovies, tv: allTV }, similarityMap] = await Promise.all([
+    fetchCandidates(hasProfile ? profile : null),
+    loadSimilarityMap(likedItems),
+  ]);
+
+  // Fire-and-forget : refresh similar_items pour les liked items périmés
+  // Batch de 3 pour respecter les rate limits TMDB (40 req/s)
+  for (let i = 0; i < likedItems.length; i += 3) {
+    const batch = likedItems.slice(i, i + 3);
+    void Promise.all(batch.map((item) => fetchAndCacheSimilarItems(item.tmdb_id, item.media_type)));
+  }
 
   const movieCandidates = allMovies.filter((m) => !excludedSet.has(`${m.id}-movie`));
   const tvCandidates    = allTV.filter((m) => !excludedSet.has(`${m.id}-tv`));
@@ -132,10 +153,10 @@ export async function GET(request: NextRequest) {
   const scored: ScoredItem[] = [];
 
   for (const m of movieCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-movie`), "movie", friendLikeMap, friendCount));
+    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-movie`), "movie", friendLikeMap, friendCount, similarityMap, likedItems, featureMapFinal));
   }
   for (const m of tvCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-tv`), "tv", friendLikeMap, friendCount));
+    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-tv`), "tv", friendLikeMap, friendCount, similarityMap, likedItems, featureMapFinal));
   }
 
   scored.sort((a, b) => b.score - a.score);

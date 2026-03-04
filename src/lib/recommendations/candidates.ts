@@ -37,7 +37,6 @@ export async function asyncPool<T>(
 ): Promise<T[]> {
   const results: T[] = [];
   const active = new Set<Promise<void>>();
-  let index = 0;
   const indexedResults: Array<{ idx: number; value: T }> = [];
 
   for (let i = 0; i < tasks.length; i++) {
@@ -48,7 +47,6 @@ export async function asyncPool<T>(
       active.delete(p);
     });
     active.add(p);
-    index++;
     if (active.size >= concurrency) {
       await Promise.race(active);
     }

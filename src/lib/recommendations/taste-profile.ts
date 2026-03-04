@@ -136,19 +136,19 @@ export async function computeAndSaveTasteProfile(userId: string): Promise<TasteP
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as any;
 
-  // 1. Toutes les interactions de l'utilisateur (avec created_at pour temporal decay)
-  const { data: interactions } = await supabase
-    .from("interactions")
-    .select("tmdb_id, media_type, type, not_interested, created_at")
-    .eq("user_id", userId) as { data: InteractionRow[] | null };
-
-  // 2. Historique de visionnage natif Nemo (progress ≥ WATCH_MIN_PROGRESS)
+  // 1 + 2. Interactions et historique de visionnage — requêtes indépendantes en parallèle
   // createAdminClient() : watch_history a RLS auth.uid() — le service_role contourne
-  const { data: watchHistory } = await supabase
-    .from("watch_history")
-    .select("tmdb_id, media_type, progress, last_watched_at")
-    .eq("user_id", userId)
-    .gte("progress", WATCH_MIN_PROGRESS) as { data: WatchHistoryRow[] | null };
+  const [{ data: interactions }, { data: watchHistory }] = await Promise.all([
+    supabase
+      .from("interactions")
+      .select("tmdb_id, media_type, type, not_interested, created_at")
+      .eq("user_id", userId) as Promise<{ data: InteractionRow[] | null }>,
+    supabase
+      .from("watch_history")
+      .select("tmdb_id, media_type, progress, last_watched_at")
+      .eq("user_id", userId)
+      .gte("progress", WATCH_MIN_PROGRESS) as Promise<{ data: WatchHistoryRow[] | null }>,
+  ]);
 
   // Si aucune donnée exploitable, retourner un profil vide
   const hasInteractions = interactions && interactions.length > 0;
