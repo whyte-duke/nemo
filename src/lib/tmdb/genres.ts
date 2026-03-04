@@ -1,0 +1,32 @@
+/** Mapping complet des IDs de genres TMDB vers leurs noms en français */
+export const TMDB_GENRE_NAMES: Record<number, string> = {
+  // Films
+  28: "l'Action",
+  12: "l'Aventure",
+  16: "les Films Animés",
+  35: "la Comédie",
+  80: "le Crime",
+  99: "les Documentaires",
+  18: "le Drame",
+  10751: "les Films Familiaux",
+  14: "la Fantaisie",
+  36: "l'Histoire",
+  27: "l'Horreur",
+  10402: "la Musique",
+  9648: "le Mystère",
+  10749: "la Romance",
+  878: "la Science-Fiction",
+  10770: "les Films TV",
+  53: "le Thriller",
+  10752: "la Guerre",
+  37: "le Western",
+  // Séries
+  10759: "l'Action & Aventure",
+  10762: "les Séries Jeunesse",
+  10763: "l'Actualité",
+  10764: "la Réalité",
+  10765: "la Sci-Fi & Fantasy",
+  10766: "les Soaps",
+  10767: "les Talk-shows",
+  10768: "la Guerre & Politique",
+};

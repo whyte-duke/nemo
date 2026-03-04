@@ -139,10 +139,10 @@ export async function DELETE(
   const { id } = await params;
   const supabase = createAdminClient();
 
-  // Seul l'owner peut supprimer; la liste par défaut ne peut pas être supprimée
+  // Seul l'owner peut supprimer; la liste par défaut et les listes non_deletable ne peuvent pas être supprimées
   const { data: list } = await supabase
     .from("lists")
-    .select("is_default, user_id")
+    .select("is_default, non_deletable, user_id")
     .eq("id", id)
     .single();
 
@@ -160,8 +160,12 @@ export async function DELETE(
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
-  if ((list as { is_default: boolean }).is_default) {
+  const listData = list as { is_default: boolean; non_deletable: boolean };
+  if (listData.is_default) {
     return NextResponse.json({ error: "La liste par défaut ne peut pas être supprimée" }, { status: 400 });
+  }
+  if (listData.non_deletable) {
+    return NextResponse.json({ error: "Cette liste ne peut pas être supprimée" }, { status: 403 });
   }
 
   const { error } = await supabase.from("lists").delete().eq("id", id);

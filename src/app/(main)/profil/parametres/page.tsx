@@ -247,17 +247,17 @@ export default function ParametresPage() {
   }
 
   return (
-    <div className="bg-[#0b0d12] min-h-dvh pt-20">
-      <div className="max-w-2xl mx-auto px-6 sm:px-12 py-12">
-        <div className="flex items-center gap-3 mb-10">
+    <div className="bg-[#0b0d12] min-h-dvh">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-10 py-4 sm:py-10">
+        <div className="flex items-center gap-3 mb-6 sm:mb-10">
           <Settings className="size-7 text-nemo-accent" />
           <h1 className="text-3xl font-black text-white">Paramètres</h1>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-8">
+        <form onSubmit={handleSave} className="space-y-4 sm:space-y-8">
 
           {/* ── Préférences de lecture ── */}
-          <section className="glass rounded-2xl p-6 space-y-5">
+          <section className="glass rounded-xl p-4 sm:p-6 space-y-5">
             <h2 className="text-white font-semibold text-base mb-1">Préférences de lecture</h2>
 
             <div className="grid grid-cols-2 gap-4">
@@ -290,7 +290,7 @@ export default function ParametresPage() {
           </section>
 
           {/* ── Mes abonnements streaming ── */}
-          <section className="glass rounded-2xl p-6 space-y-5">
+          <section className="glass rounded-xl p-4 sm:p-6 space-y-5">
             <div className="flex items-center gap-2">
               <Tv2 className="size-5 text-nemo-accent" />
               <h2 className="text-white font-semibold text-base">Mes abonnements streaming</h2>
@@ -386,7 +386,7 @@ export default function ParametresPage() {
           </section>
 
           {/* ── Affichage des options payantes ── */}
-          <section className="glass rounded-2xl p-6 space-y-4">
+          <section className="glass rounded-xl p-4 sm:p-6 space-y-4">
             <div className="flex items-center gap-2">
               <CreditCard className="size-5 text-nemo-accent" />
               <h2 className="text-white font-semibold text-base">Options de location et d&apos;achat</h2>
@@ -442,7 +442,7 @@ export default function ParametresPage() {
           </section>
 
           {/* ── Mon Jellyfin personnel ── */}
-          <section className="glass rounded-2xl p-6 space-y-5">
+          <section className="glass rounded-xl p-4 sm:p-6 space-y-5">
             <div className="flex items-center gap-2">
               <Server className="size-5 text-[#00A4DC]" />
               <h2 className="text-white font-semibold text-base">Mon Jellyfin</h2>
@@ -633,7 +633,7 @@ export default function ParametresPage() {
 
           {/* ── Compte utilisateur Jellyfin ── */}
           {hasPersonalJellyfin && (
-            <section className="glass rounded-2xl p-6 space-y-5">
+            <section className="glass rounded-xl p-4 sm:p-6 space-y-5">
               <div className="flex items-center gap-2">
                 <User className="size-5 text-[#00A4DC]" />
                 <h2 className="text-white font-semibold text-base">Compte Jellyfin</h2>
@@ -788,7 +788,7 @@ export default function ParametresPage() {
           )}
 
           {/* ── Notifications ── */}
-          <section className="glass rounded-2xl p-6 space-y-5">
+          <section className="glass rounded-xl p-4 sm:p-6 space-y-5">
             <div className="flex items-center gap-2">
               <Bell className="size-5 text-nemo-accent" />
               <h2 className="text-white font-semibold text-base">Notifications</h2>

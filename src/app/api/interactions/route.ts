@@ -27,20 +27,20 @@ export async function POST(request: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
 
-  let body: { tmdbId: number; mediaType: "movie" | "tv"; type: "like" | "dislike" | null };
+  let body: { tmdbId: number; mediaType: "movie" | "tv"; type: "like" | "dislike" | null; notInterested?: boolean };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Corps invalide" }, { status: 400 });
   }
 
-  const { tmdbId, mediaType, type } = body;
+  const { tmdbId, mediaType, type, notInterested } = body;
   if (typeof tmdbId !== "number" || !mediaType) {
     return NextResponse.json({ error: "Paramètres manquants" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
-  if (type === null) {
+  if (type === null && !notInterested) {
     await supabase
       .from("interactions")
       .delete()
@@ -49,8 +49,12 @@ export async function POST(request: Request) {
       .eq("media_type", mediaType);
   } else {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload: Record<string, unknown> = { user_id: user.id, tmdb_id: tmdbId, media_type: mediaType };
+    if (type !== null) payload.type = type;
+    if (notInterested !== undefined) payload.not_interested = notInterested;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from("interactions").upsert(
-      { user_id: user.id, tmdb_id: tmdbId, media_type: mediaType, type },
+      payload,
       { onConflict: "user_id,tmdb_id,media_type" }
     );
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

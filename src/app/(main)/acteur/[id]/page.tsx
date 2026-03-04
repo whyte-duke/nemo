@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import {
   getPersonDetail,
   getPersonMovieCredits,
@@ -9,6 +8,7 @@ import {
   tmdbImage,
 } from "@/lib/tmdb/client";
 import { formatDate } from "@/lib/utils";
+import { PersonFilmography } from "@/components/person/PersonFilmography";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -46,12 +46,10 @@ export default async function ActeurPage({ params }: Props) {
     ]);
 
     const allMovies = [...new Map(movieCredits.cast.map((m) => [m.id, m])).values()]
-      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
-      .slice(0, 20);
+      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
 
     const allTV = [...new Map(tvCredits.cast.map((s) => [s.id, s])).values()]
-      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
-      .slice(0, 12);
+      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
 
     return (
       <article className="bg-[#080a0f] min-h-dvh pt-20">
@@ -111,84 +109,12 @@ export default async function ActeurPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Filmographie */}
-          {allMovies.length > 0 && (
-            <section className="mb-12">
-              <h2 className="text-white font-semibold text-xl mb-5 flex items-center gap-3">
-                Filmographie
-                <span className="section-label">{movieCredits.cast.length} films</span>
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {allMovies.map((movie) => (
-                  <Link key={`movie-${movie.id}`} href={`/film/${movie.id}`} className="group">
-                    <div className="relative rounded-2xl overflow-hidden aspect-2/3 bg-[#161a24] mb-2 ring-1 ring-white/8">
-                      {movie.poster_path ? (
-                        <Image
-                          src={tmdbImage.poster(movie.poster_path, "w342") ?? ""}
-                          alt={movie.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          sizes="(max-width: 640px) 150px, 200px"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center p-2">
-                          <span className="text-white/20 text-xs text-center text-balance">
-                            {movie.title}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-white/80 text-xs font-medium truncate group-hover:text-white transition-colors">
-                      {movie.title}
-                    </p>
-                    {movie.character && (
-                      <p className="text-white/40 text-xs truncate">{movie.character}</p>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Séries */}
-          {allTV.length > 0 && (
-            <section>
-              <h2 className="text-white font-semibold text-xl mb-5 flex items-center gap-3">
-                Séries
-                <span className="section-label">{tvCredits.cast.length}</span>
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {allTV.map((show) => {
-                  const showName =
-                    (show as { name?: string; title?: string }).name ?? show.title ?? "";
-                  return (
-                    <Link key={show.id} href={`/serie/${show.id}`} className="group">
-                      <div className="relative rounded-2xl overflow-hidden aspect-2/3 bg-[#161a24] mb-2 ring-1 ring-white/8">
-                        {show.poster_path ? (
-                          <Image
-                            src={tmdbImage.poster(show.poster_path, "w342") ?? ""}
-                            alt={showName}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            sizes="160px"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center p-2">
-                            <span className="text-white/20 text-xs text-center text-balance">
-                              {showName}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-white/80 text-xs font-medium truncate group-hover:text-white transition-colors">
-                        {showName}
-                      </p>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+          <PersonFilmography
+            movies={allMovies}
+            tvShows={allTV}
+            totalMovies={movieCredits.cast.length}
+            totalTV={tvCredits.cast.length}
+          />
         </div>
       </article>
     );

@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 const STEPS = [
   { id: 1, label: "Mes services" },
   { id: 2, label: "Mon historique" },
-  { id: 3, label: "Bienvenue !" },
+  { id: 3, label: "Mes goûts" },
+  { id: 4, label: "Bienvenue !" },
 ];
 
 interface OnboardingShellProps {

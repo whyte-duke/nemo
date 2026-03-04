@@ -1,4 +1,6 @@
 import { Navbar } from "@/components/navigation/Navbar";
+import { RecommendationsProvider } from "@/lib/recommendations/context";
+import { UserInteractionsProvider } from "@/lib/recommendations/user-interactions-context";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -61,7 +63,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       <div className="relative" style={{ zIndex: 1 }}>
         <Navbar />
-        <main>{children}</main>
+        {/*
+          pt-14 lg:pt-16 : espace pour la top navbar
+          pb-24 lg:pb-0  : espace pour la bottom nav mobile + safe area
+        */}
+        <UserInteractionsProvider>
+          <RecommendationsProvider>
+            <main className="pt-14 lg:pt-16 pb-16 lg:pb-0">{children}</main>
+          </RecommendationsProvider>
+        </UserInteractionsProvider>
       </div>
     </div>
   );

@@ -346,7 +346,8 @@ export function InviteModal({ open, onClose, userRole }: InviteModalProps) {
                   "inset-x-3 bottom-3 sm:inset-auto",
                   "sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
                   "w-auto sm:w-120",
-                  "rounded-3xl overflow-hidden",
+                  "max-h-[90svh] overflow-y-auto",
+                  "rounded-3xl",
                   "bg-[#0b0d14] border border-white/8 shadow-[0_32px_80px_rgba(0,0,0,0.8)]"
                 )}
               >
@@ -409,7 +410,7 @@ export function InviteModal({ open, onClose, userRole }: InviteModalProps) {
                   </Dialog.Close>
                 </div>
 
-                <div className="px-5 pt-4 pb-5 space-y-4" id="invite-desc">
+                <div className="px-5 pt-4 pb-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5 space-y-4" id="invite-desc">
 
                   {/* ── Champ "Pour (prénom)" ── */}
                   <div>

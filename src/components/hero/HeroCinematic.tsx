@@ -69,6 +69,9 @@ export function HeroCinematic({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchStartTime = useRef(0);
 
   const active = items[activeIndex];
   const detailHref = active
@@ -161,9 +164,29 @@ export function HeroCinematic({
   const handleNavClick = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
   const handleDotsClick = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]!.clientX;
+    touchStartY.current = e.touches[0]!.clientY;
+    touchStartTime.current = Date.now();
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const deltaX = e.changedTouches[0]!.clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0]!.clientY - touchStartY.current;
+    const elapsed = Date.now() - touchStartTime.current;
+    // Swipe horizontal > 50px, mouvement plus horizontal que vertical, < 500ms
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50 && elapsed < 500) {
+      navigate(deltaX > 0 ? "prev" : "next");
+    }
+  }, [navigate]);
+
   return (
     /* ─── Container arrondi — floating stage ───────────────────── */
-    <div className="relative w-full min-h-150 max-h-[88dvh] overflow-hidden rounded-[44px] bg-nemo-bg">
+    <div
+      className="relative w-full min-h-[70dvh] sm:min-h-[75dvh] overflow-hidden rounded-[44px] bg-nemo-bg"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* ─── Zone cliquable : tout le carrousel → détail film/série ── */}
       <button
         type="button"
@@ -344,7 +367,7 @@ export function HeroCinematic({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.06, duration: 0.2 }}
-                className="text-white/75 text-sm sm:text-base leading-relaxed line-clamp-3 text-pretty max-w-xl"
+                className="hidden sm:block text-white/75 text-sm sm:text-base leading-relaxed line-clamp-3 text-pretty max-w-xl"
               >
                 {overview}
               </motion.p>

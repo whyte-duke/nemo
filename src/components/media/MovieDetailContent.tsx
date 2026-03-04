@@ -19,6 +19,7 @@ import { useStream } from "@/providers/stream-provider";
 import { StreamingServices } from "@/components/media/StreamingServices";
 import { useStreamingAvailability } from "@/hooks/use-streaming-availability";
 import { useStreamingPreferences, filterStreamingOptions } from "@/hooks/use-streaming-preferences";
+import { useItemRecommendation } from "@/lib/recommendations/context";
 import type { TMDbMovieDetail } from "@/types/tmdb";
 
 interface Props {
@@ -45,6 +46,7 @@ export function MovieDetailContent({ movie }: Props) {
     ? filterStreamingOptions(rawStreamingOptions, streamingPrefs)
     : undefined;
 
+  const recommendation = useItemRecommendation(movie.id, "movie");
   const trailerKey = getTrailerKey(movie.videos);
   const topCast = movie.credits.cast.slice(0, 12);
 
@@ -180,6 +182,19 @@ export function MovieDetailContent({ movie }: Props) {
                 Disponible sur Jellyfin
               </span>
             )}
+            {recommendation && recommendation.score > 0.65 && (
+              <span className={cn(
+                "section-label flex items-center gap-1",
+                recommendation.reason_type === "taste_match" ? "text-nemo-accent! border-nemo-accent/30!" :
+                recommendation.reason_type === "social" ? "text-blue-300! border-blue-400/30!" :
+                "text-amber-300! border-amber-400/30!"
+              )}>
+                {recommendation.reason_type === "taste_match" && recommendation.score > 0.80 ? "✦ Vous allez adorer" :
+                 recommendation.reason_type === "taste_match" ? "✦ Pour vous" :
+                 recommendation.reason_type === "social" ? "👥 Vos amis ont aimé" :
+                 "⭐ Pépite"}
+              </span>
+            )}
           </div>
 
           {/* Synopsis court dans le hero */}
@@ -209,25 +224,27 @@ export function MovieDetailContent({ movie }: Props) {
                 type="button"
                 onClick={() => markAsWatched({ tmdbId: movie.id, mediaType: "movie" })}
                 disabled={isMarkingWatched}
-                className="btn-glass-pill px-5 py-3 flex items-center gap-2"
                 aria-label="Marquer comme vu"
+                className={cn(
+                  "flex items-center justify-center size-11 rounded-full border transition-all",
+                  "glass border-white/30 hover:border-white/60 text-white disabled:opacity-50"
+                )}
               >
                 {isMarkingWatched ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                  <Loader2 className="size-5 animate-spin" aria-hidden />
                 ) : (
-                  <CheckCircle2 className="size-4 shrink-0" />
+                  <CheckCircle2 className="size-5" />
                 )}
-                Marquer comme vu
               </button>
             )}
 
             {trailerKey && (
               <button
                 onClick={() => setShowTrailer(true)}
-                className="btn-glass-pill px-5 py-3"
+                aria-label="Bande-annonce"
+                className="flex items-center justify-center size-11 rounded-full border border-white/30 hover:border-white/60 glass text-white transition-all"
               >
-                <Clapperboard className="size-4 shrink-0" />
-                Bande-annonce
+                <Clapperboard className="size-5" />
               </button>
             )}
 
@@ -242,10 +259,14 @@ export function MovieDetailContent({ movie }: Props) {
                     })
                   }
                   aria-label={isInList ? "Retirer de Ma Liste" : "Ajouter à Ma Liste"}
-                  className="btn-glass-pill px-5 py-3"
+                  className={cn(
+                    "flex items-center justify-center size-11 rounded-full border transition-all",
+                    isInList
+                      ? "bg-nemo-accent/20 border-nemo-accent text-nemo-accent"
+                      : "glass border-white/30 hover:border-white/60 text-white"
+                  )}
                 >
-                  {isInList ? <Check className="size-4 shrink-0" /> : <Plus className="size-4 shrink-0" />}
-                  {isInList ? "Dans Ma Liste" : "Ma Liste"}
+                  {isInList ? <Check className="size-5" /> : <Plus className="size-5" />}
                 </button>
 
                 <div className="flex items-center gap-2">

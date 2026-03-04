@@ -8,16 +8,16 @@ import type { TMDbMovie, TMDbTVShow } from "@/types/tmdb";
 
 type MediaItem = TMDbMovie | TMDbTVShow;
 
-/** Largeur (base → expanded) + hauteur fixe pour éviter layout shift (la rangée ne grandit pas au hover) */
+/** Largeur (base → expanded) + hauteur fixe pour éviter layout shift */
 const ROW_CARD_WIDTH_CLASSES: Record<string, { base: string; expanded: string }> = {
-  sm: { base: "w-28 sm:w-32", expanded: "w-36 sm:w-40" },
-  md: { base: "w-36 sm:w-44", expanded: "w-48 sm:w-56" },
-  lg: { base: "w-44 sm:w-56", expanded: "w-56 sm:w-72" },
+  sm: { base: "w-24 sm:w-28",  expanded: "w-32 sm:w-36" },
+  md: { base: "w-28 sm:w-40",  expanded: "w-40 sm:w-52" },
+  lg: { base: "w-36 sm:w-52",  expanded: "w-48 sm:w-64" },
 };
 const ROW_CARD_HEIGHT: Record<string, string> = {
-  sm: "h-[10.5rem]",   // 168px
-  md: "h-[16.5rem]",   // 264px
-  lg: "h-[21rem]",     // 336px
+  sm: "h-[9rem] sm:h-[10.5rem]",
+  md: "h-[12.5rem] sm:h-[15rem]",
+  lg: "h-[16.5rem] sm:h-[19.5rem]",
 };
 
 interface MediaRowProps {
@@ -26,6 +26,7 @@ interface MediaRowProps {
   mediaType: "movie" | "tv";
   onPlay?: (item: MediaItem) => void;
   onMoreInfo?: (item: MediaItem) => void;
+  onNotInterested?: (item: MediaItem) => void;
   viewAllHref?: string;
   cardSize?: "sm" | "md" | "lg";
   isLoading?: boolean;
@@ -34,6 +35,8 @@ interface MediaRowProps {
   badge?: string;
   /** Slug du provider (netflix, apple-tv, etc.) : affiche le logo à côté du titre. */
   providerSlug?: string;
+  /** Si true, masque les items déjà likés/dislikés/notInterested */
+  hideIfSeen?: boolean;
 }
 
 function SkeletonCard() {
@@ -50,12 +53,14 @@ export function MediaRow({
   mediaType,
   onPlay,
   onMoreInfo,
+  onNotInterested,
   viewAllHref,
   cardSize = "md",
   isLoading = false,
   showTopNumber = false,
   badge,
   providerSlug,
+  hideIfSeen = false,
 }: MediaRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -93,69 +98,45 @@ export function MediaRow({
   return (
     <section className="relative group/row">
       {/* ─── En-tête ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 sm:px-8 mb-0.5">
-        <div className="flex items-center gap-3">
-          {providerSlug && (
-            <ProviderLogo provider={providerSlug} size="sm" ariaLabel={title} />
-          )}
-          <h2 className="text-white font-bold text-lg sm:text-xl tracking-tight text-balance">
-            {title}
-          </h2>
-          {badge && !providerSlug && (
-            <span className="section-label">{badge}</span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {canScrollRight && !isLoading && items.length > 0 && (
-            <button
-              type="button"
-              onClick={scrollMore}
-              aria-label="Défiler plus vers la droite"
-              className={cn(
-                "text-xs font-semibold text-white/50 hover:text-white transition-colors",
-                "flex items-center gap-1.5",
-                "px-3 py-1.5 rounded-full",
-                "bg-white/5 hover:bg-white/10 border border-white/8 hover:border-white/16",
-                "transition-all duration-200"
-              )}
-            >
-              Défiler plus
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-                <path
-                  d="M4.5 2.5L7.5 6L4.5 9.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          )}
-          {viewAllHref && (
-          <a
-            href={viewAllHref}
-            className={cn(
-              "text-xs font-semibold text-white/50 hover:text-white transition-colors",
-              "flex items-center gap-1.5",
-              "px-3 py-1.5 rounded-full",
-              "bg-white/5 hover:bg-white/10 border border-white/8 hover:border-white/16",
-              "transition-all duration-200"
+      <div className="px-4 sm:px-8 mb-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3 min-w-0">
+            {providerSlug && (
+              <ProviderLogo provider={providerSlug} size="sm" ariaLabel={title} />
             )}
-          >
-            Voir tout
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path
-                d="M4.5 2.5L7.5 6L4.5 9.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-          )}
+            <h2 className="text-white font-bold text-base sm:text-lg tracking-tight truncate">
+              {title}
+            </h2>
+            {badge && !providerSlug && (
+              <span className="section-label shrink-0">{badge}</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 ml-3">
+            {viewAllHref && (
+              <a
+                href={viewAllHref}
+                className={cn(
+                  "text-xs font-semibold text-white/40 hover:text-white/80 transition-colors",
+                  "flex items-center gap-1",
+                  "active:scale-95"
+                )}
+              >
+                Voir tout
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path
+                    d="M4.5 2.5L7.5 6L4.5 9.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </a>
+            )}
+          </div>
         </div>
+        <div className="h-px bg-white/6" />
       </div>
 
       {/* ─── Conteneur scroll : hauteur fixe pour ne pas pousser les sections en dessous ─── */}
@@ -167,9 +148,9 @@ export function MediaRow({
           className={cn(
             "absolute left-2 top-1/2 -translate-y-1/2 z-(--z-above)",
             "flex items-center justify-center size-10",
-            "glass-capsule opacity-0 group-hover/row:opacity-100",
+            "glass-capsule opacity-25 group-hover/row:opacity-100",
             "transition-all duration-200 hover:bg-white/15",
-            !canScrollLeft && "pointer-events-none opacity-0!"
+            !canScrollLeft && "pointer-events-none !opacity-0"
           )}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -188,8 +169,8 @@ export function MediaRow({
           ref={scrollRef}
           onScroll={checkScroll}
           className={cn(
-            "media-row-scroll flex items-center gap-3 sm:gap-4 px-4 sm:px-8 overflow-x-auto",
-            "min-h-98 pt-6 pb-10"
+            "media-row-scroll flex items-center gap-2.5 sm:gap-4 px-4 sm:px-8 overflow-x-auto",
+            "pt-4 pb-8 sm:pt-6 sm:pb-10"
           )}
         >
           {isLoading
@@ -202,7 +183,7 @@ export function MediaRow({
                   <div
                     key={item.id}
                     className={cn(
-                      "relative shrink-0 transition-[width] duration-300 ease-out flex justify-center overflow-visible",
+                      "relative shrink-0 transition-[width] duration-300 ease-out flex justify-center overflow-visible media-row-item",
                       fixedHeight,
                       isHovered ? widths.expanded : widths.base
                     )}
@@ -220,12 +201,14 @@ export function MediaRow({
                       mediaType={mediaType}
                       onPlay={onPlay}
                       onMoreInfo={onMoreInfo}
+                      onNotInterested={onNotInterested}
                       size={cardSize}
                       index={index}
                       totalItems={items.length}
                       isHovered={isHovered}
                       onHoverStart={() => setHoveredIndex(index)}
                       onHoverEnd={() => setHoveredIndex(null)}
+                      hideIfSeen={hideIfSeen}
                     />
                   </div>
                 );
@@ -239,9 +222,9 @@ export function MediaRow({
           className={cn(
             "absolute right-2 top-1/2 -translate-y-1/2 z-(--z-above)",
             "flex items-center justify-center size-10",
-            "glass-capsule opacity-0 group-hover/row:opacity-100",
+            "glass-capsule opacity-25 group-hover/row:opacity-100",
             "transition-all duration-200 hover:bg-white/15",
-            !canScrollRight && "pointer-events-none opacity-0!"
+            !canScrollRight && "pointer-events-none !opacity-0"
           )}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -258,14 +241,14 @@ export function MediaRow({
         {/* Gradients de fondu sur les bords */}
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-12 pointer-events-none transition-opacity duration-300",
+            "absolute left-0 top-0 bottom-0 w-20 pointer-events-none transition-opacity duration-300",
             "bg-linear-to-r from-nemo-bg to-transparent",
             canScrollLeft ? "opacity-100" : "opacity-0"
           )}
         />
         <div
           className={cn(
-            "absolute right-0 top-0 bottom-0 w-12 pointer-events-none transition-opacity duration-300",
+            "absolute right-0 top-0 bottom-0 w-20 pointer-events-none transition-opacity duration-300",
             "bg-linear-to-l from-nemo-bg to-transparent",
             canScrollRight ? "opacity-100" : "opacity-0"
           )}

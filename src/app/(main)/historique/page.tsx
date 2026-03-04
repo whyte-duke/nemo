@@ -402,8 +402,8 @@ export default function HistoriquePage() {
   if (currentGroup.length > 0) groups.push({ label: currentLabel, items: currentGroup });
 
   return (
-    <div className="bg-nemo-bg min-h-dvh pt-20">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+    <div className="bg-nemo-bg min-h-dvh">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
 
         {/* Header */}
         <div className="flex items-center justify-between gap-4 mb-8">

@@ -184,7 +184,7 @@ export default function ProfilPage({ params }: { params: Promise<{ userId: strin
 
   if (profileLoading) {
     return (
-      <div className="bg-[#0b0d12] min-h-dvh pt-20 flex items-center justify-center">
+      <div className="bg-[#0b0d12] min-h-dvh flex items-center justify-center">
         <Loader2 className="size-8 text-white/25 animate-spin" />
       </div>
     );
@@ -192,7 +192,7 @@ export default function ProfilPage({ params }: { params: Promise<{ userId: strin
 
   if (!profile) {
     return (
-      <div className="bg-[#0b0d12] min-h-dvh pt-20 flex flex-col items-center justify-center gap-4">
+      <div className="bg-[#0b0d12] min-h-dvh flex flex-col items-center justify-center gap-4">
         <p className="text-white/50">Utilisateur introuvable</p>
         <button onClick={() => router.back()} className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors">
           <ArrowLeft className="size-4" />
@@ -212,8 +212,8 @@ export default function ProfilPage({ params }: { params: Promise<{ userId: strin
   ];
 
   return (
-    <div className="bg-[#0b0d12] min-h-dvh pt-20">
-      <div className="max-w-3xl mx-auto px-6 sm:px-12 py-10">
+    <div className="bg-[#0b0d12] min-h-dvh">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-10 py-4 sm:py-8">
         {/* Profil header */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10">
           {/* Avatar */}
@@ -298,7 +298,7 @@ export default function ProfilPage({ params }: { params: Promise<{ userId: strin
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-4 gap-3 mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
             <StatBlock icon={<Film className="size-4" />} value={stats.total_watched} label="Vus" />
             <StatBlock icon={<ThumbsUp className="size-4" />} value={stats.total_likes} label="Likes" />
             <StatBlock icon={<ThumbsDown className="size-4" />} value={stats.total_dislikes} label="Dislikes" />

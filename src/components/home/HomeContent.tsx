@@ -23,10 +23,14 @@ import {
 import { useStream } from "@/providers/stream-provider";
 import { useProfile } from "@/hooks/use-profile";
 import { useQuery } from "@tanstack/react-query";
-import { Play, Loader2, RotateCcw } from "lucide-react";
+import { PersonalizedRow } from "@/components/home/PersonalizedRow";
+import { UserListRows } from "@/components/home/UserListRows";
+import { Play, Loader2, RotateCcw, Eye, EyeOff } from "lucide-react";
 import { JellyfinIcon } from "@/components/icons/JellyfinIcon";
+import { cn } from "@/lib/utils";
 import type { TMDbMovieDetail, TMDbTVShowDetail } from "@/types/tmdb";
 import type { JellyfinBaseItem } from "@/types/jellyfin";
+import type { ScoredItem } from "@/lib/recommendations/scorer";
 
 type DetailMedia = TMDbMovieDetail | TMDbTVShowDetail;
 type MediaItem = { id: number; title?: string; name?: string; imdb_id?: string | null };
@@ -58,6 +62,7 @@ type SectionConfig = {
 type RowCallbacks = {
   onPlay: (item: MediaItem, type: "movie" | "tv") => void;
   onMoreInfo: (item: MediaItem, type: "movie" | "tv") => void;
+  hideIfSeen?: boolean;
 };
 
 // ─── Pool principal ───────────────────────────────────────────────────────────
@@ -192,73 +197,73 @@ function shuffleCopy<T>(arr: T[]): T[] {
 
 // ─── Composants de rangée (hooks au niveau composant, inchangés) ──────────────
 
-function TrendingAllDayRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function TrendingAllDayRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = useTrending("all", "day");
   return (
-    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="movie" isLoading={isLoading}
+    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="movie" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => { const m = item as MediaItem & { first_air_date?: string }; onPlay(m, m.first_air_date ? "tv" : "movie"); }}
       onMoreInfo={(item) => { const m = item as MediaItem & { first_air_date?: string }; onMoreInfo(m, m.first_air_date ? "tv" : "movie"); }} />
   );
 }
 
-function TrendingAllWeekRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function TrendingAllWeekRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = useTrending("all", "week");
   return (
-    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="movie" isLoading={isLoading}
+    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="movie" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => { const m = item as MediaItem & { first_air_date?: string }; onPlay(m, m.first_air_date ? "tv" : "movie"); }}
       onMoreInfo={(item) => { const m = item as MediaItem & { first_air_date?: string }; onMoreInfo(m, m.first_air_date ? "tv" : "movie"); }} />
   );
 }
 
-function NowPlayingRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function NowPlayingRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = useNowPlayingMovies();
   return (
-    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="movie" isLoading={isLoading}
+    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="movie" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "movie")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "movie")} />
   );
 }
 
-function PopularMoviesRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function PopularMoviesRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = usePopularMovies();
   return (
-    <MediaRow title={config.title} items={data?.results ?? []} mediaType="movie" isLoading={isLoading}
+    <MediaRow title={config.title} items={data?.results ?? []} mediaType="movie" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "movie")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "movie")} showTopNumber={config.showTopNumber} />
   );
 }
 
-function TopRatedMoviesRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function TopRatedMoviesRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = useTopRatedMovies();
   return (
-    <MediaRow title={config.title} items={data?.results ?? []} mediaType="movie" isLoading={isLoading}
+    <MediaRow title={config.title} items={data?.results ?? []} mediaType="movie" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "movie")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "movie")} showTopNumber={config.showTopNumber} />
   );
 }
 
-function PopularTVRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function PopularTVRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = usePopularTV();
   return (
-    <MediaRow title={config.title} items={data?.results ?? []} mediaType="tv" isLoading={isLoading}
+    <MediaRow title={config.title} items={data?.results ?? []} mediaType="tv" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "tv")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "tv")} />
   );
 }
 
-function TopRatedTVRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function TopRatedTVRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = useTopRatedTV();
   return (
-    <MediaRow title={config.title} items={data?.results ?? []} mediaType="tv" isLoading={isLoading}
+    <MediaRow title={config.title} items={data?.results ?? []} mediaType="tv" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "tv")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "tv")} showTopNumber={config.showTopNumber} />
   );
 }
 
-function OnAirRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function OnAirRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const { data, isLoading } = useOnAirTV();
   return (
-    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="tv" isLoading={isLoading}
+    <MediaRow title={config.title} badge={config.badge} items={data?.results ?? []} mediaType="tv" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "tv")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "tv")} />
   );
 }
 
-function DiscoverMovieRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function DiscoverMovieRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const [page] = useState(() => (config.params?.page as number | undefined) ?? Math.floor(Math.random() * 4) + 1);
   const params = { ...config.params };
   delete params.page;
@@ -266,12 +271,12 @@ function DiscoverMovieRow({ config, onPlay, onMoreInfo }: { config: SectionConfi
   const providerSlug = config.viewAllHref?.replace(/^\/hub\//, "");
   return (
     <MediaRow title={config.title} badge={config.badge} viewAllHref={config.viewAllHref} showTopNumber={config.showTopNumber} providerSlug={providerSlug}
-      items={data?.results ?? []} mediaType="movie" isLoading={isLoading}
+      items={data?.results ?? []} mediaType="movie" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "movie")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "movie")} />
   );
 }
 
-function DiscoverTVRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
+function DiscoverTVRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
   const [page] = useState(() => (config.params?.page as number | undefined) ?? Math.floor(Math.random() * 4) + 1);
   const params = { ...config.params };
   delete params.page;
@@ -279,13 +284,13 @@ function DiscoverTVRow({ config, onPlay, onMoreInfo }: { config: SectionConfig }
   const providerSlug = config.viewAllHref?.replace(/^\/hub\//, "");
   return (
     <MediaRow title={config.title} badge={config.badge} viewAllHref={config.viewAllHref} showTopNumber={config.showTopNumber} providerSlug={providerSlug}
-      items={data?.results ?? []} mediaType="tv" isLoading={isLoading}
+      items={data?.results ?? []} mediaType="tv" isLoading={isLoading} hideIfSeen={hideIfSeen}
       onPlay={(item) => onPlay(item as MediaItem, "tv")} onMoreInfo={(item) => onMoreInfo(item as MediaItem, "tv")} />
   );
 }
 
-function SectionRow({ config, onPlay, onMoreInfo }: { config: SectionConfig } & RowCallbacks) {
-  const props = { config, onPlay, onMoreInfo };
+function SectionRow({ config, onPlay, onMoreInfo, hideIfSeen }: { config: SectionConfig } & RowCallbacks) {
+  const props = { config, onPlay, onMoreInfo, hideIfSeen };
   switch (config.source) {
     case "trending-all-day":   return <TrendingAllDayRow {...props} />;
     case "trending-all-week":  return <TrendingAllWeekRow {...props} />;
@@ -478,6 +483,11 @@ function RowSkeleton() {
 const INITIAL_BATCH = 6;
 const BATCH_SIZE = 5;
 
+interface RecommendationsResponse {
+  items: ScoredItem[];
+  hasProfile: boolean;
+}
+
 export function HomeContent() {
   const [detailId, setDetailId] = useState<{ id: number; type: "movie" | "tv" } | null>(null);
   const [watchMovieId, setWatchMovieId] = useState<number | null>(null);
@@ -485,16 +495,85 @@ export function HomeContent() {
   const [activeStream, setActiveStream] = useState<string | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
 
-  // Pool shufflé une seule fois au montage
+  // Toggle "Masquer les films vus" (persisté en localStorage)
+  const [hideSeenItems, setHideSeenItems] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("nemo-hide-seen") === "true";
+  });
+  const toggleHideSeen = useCallback(() => {
+    setHideSeenItems((prev) => {
+      const next = !prev;
+      localStorage.setItem("nemo-hide-seen", String(next));
+      return next;
+    });
+  }, []);
+
+  // Recommandations — pour le héro personnalisé
+  const { data: recommendationsData } = useQuery<RecommendationsResponse>({
+    queryKey: ["recommendations"],
+    queryFn: async () => {
+      const res = await fetch("/api/recommendations?limit=50");
+      if (!res.ok) throw new Error("Erreur");
+      return res.json() as Promise<RecommendationsResponse>;
+    },
+    staleTime: 15 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Taste profile — pour prioriser les genres aimés
+  const { data: tasteProfileData } = useQuery<{ profile: { genre_scores: Record<string, number> } | null }>({
+    queryKey: ["taste-profile-home"],
+    queryFn: async () => {
+      const res = await fetch("/api/taste-profile");
+      if (!res.ok) return { profile: null };
+      return res.json() as Promise<{ profile: { genre_scores: Record<string, number> } | null }>;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Pool shufflé une seule fois au montage, reordonné si profil disponible
   const [allSections, setAllSections] = useState<SectionConfig[]>(() =>
     shuffleCopy(HOME_POOL)
   );
+
+  // Reordonner les sections quand le profil de goût est chargé
+  useEffect(() => {
+    const genreScores = tasteProfileData?.profile?.genre_scores;
+    if (!genreScores) return;
+
+    // Top 3 genres avec score positif
+    const topGenres = Object.entries(genreScores)
+      .filter(([, score]) => score > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => id);
+
+    if (topGenres.length === 0) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAllSections((prev) => {
+      const preferred: SectionConfig[] = [];
+      const rest: SectionConfig[] = [];
+
+      for (const section of prev) {
+        const sectionGenre = section.params?.with_genres;
+        const matches =
+          sectionGenre !== undefined &&
+          topGenres.some((g) => String(sectionGenre).split(",").includes(g) || String(sectionGenre).split("|").includes(g));
+
+        if (matches) preferred.push(section);
+        else rest.push(section);
+      }
+
+      // Préférés en tête, rest suit dans l'ordre existant (déjà shufflé)
+      return [...preferred, ...rest];
+    });
+  }, [tasteProfileData]);
   const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const visibleSections = allSections.slice(0, visibleCount);
 
-  // Hero — inchangé
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [heroItems, setHeroItems] = useState<any[]>([]);
   const heroSet = useRef(false);
@@ -506,6 +585,30 @@ export function HomeContent() {
 
   useEffect(() => {
     if (heroSet.current) return;
+
+    // Héro personnalisé : top 5 recommandations si profil disponible
+    const recs = recommendationsData?.items;
+    if (recs && recs.length >= 3 && recommendationsData.hasProfile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHeroItems(
+        recs.slice(0, 5).map((item) => ({
+          id: item.tmdb_id,
+          title: item.title,
+          name: item.name,
+          backdrop_path: item.backdrop_path,
+          poster_path: item.poster_path,
+          overview: item.overview,
+          vote_average: item.vote_average,
+          media_type: item.media_type,
+          // Champs nécessaires pour détection movie/tv par first_air_date
+          ...(item.media_type === "tv" ? { first_air_date: item.first_air_date ?? "" } : {}),
+        }))
+      );
+      heroSet.current = true;
+      return;
+    }
+
+    // Fallback : trending mix
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pool: any[] = [
       ...(trendingDay.data?.results ?? []),
@@ -518,7 +621,7 @@ export function HomeContent() {
     const unique = pool.filter((item) => !seen.has(item.id) && seen.add(item.id));
     setHeroItems([...unique].sort(() => Math.random() - 0.5).slice(0, 5));
     heroSet.current = true;
-  }, [trendingDay.data, trendingWeek.data, nowPlayingData.data, popularTVData.data]);
+  }, [recommendationsData, trendingDay.data, trendingWeek.data, nowPlayingData.data, popularTVData.data]);
 
   // ── Infinite scroll ────────────────────────────────────────────────────────
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -593,7 +696,7 @@ export function HomeContent() {
     <div className="bg-nemo-bg">
       {/* Hero */}
       {heroItems.length > 0 && (
-        <div className="px-3 sm:px-4 pt-18 sm:pt-20">
+        <div className="px-2 sm:px-4">
           <HeroCinematic
             items={heroItems}
             onPlay={(media) => {
@@ -622,10 +725,43 @@ export function HomeContent() {
         />
       </div>
 
+      {/* Pour vous — rangée personnalisée + toggle */}
+      <div className="relative z-(--z-above) pt-8">
+        {/* Toggle masquer les vus */}
+        <div className="flex justify-end px-4 sm:px-8 mb-3">
+          <button
+            onClick={toggleHideSeen}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
+              hideSeenItems
+                ? "bg-nemo-accent/20 text-nemo-accent border border-nemo-accent/40"
+                : "bg-white/6 text-white/50 border border-white/10 hover:bg-white/10 hover:text-white/70"
+            )}
+          >
+            {hideSeenItems ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+            {hideSeenItems ? "Nouveau pour moi" : "Tout afficher"}
+          </button>
+        </div>
+
+        <PersonalizedRow
+          onPlay={(item, type) => void handlePlay({ id: item.tmdb_id, title: item.title, name: item.name }, type)}
+          onMoreInfo={(item, type) => handleMoreInfo({ id: item.tmdb_id, title: item.title, name: item.name }, type)}
+        />
+      </div>
+
+      {/* Listes utilisateur */}
+      <div className="relative z-(--z-above) pt-8 space-y-12 sm:space-y-14">
+        <UserListRows
+          onPlay={(item, type) => void handlePlay(item, type)}
+          onMoreInfo={(item, type) => handleMoreInfo(item, type)}
+          hideIfSeen={hideSeenItems}
+        />
+      </div>
+
       {/* Sections avec infinite scroll */}
-      <div className="relative z-(--z-above) pt-10 pb-4 space-y-10">
+      <div className="relative z-(--z-above) pt-8 pb-4 space-y-12 sm:space-y-14">
         {visibleSections.map((config) => (
-          <SectionRow key={config.id} config={config} onPlay={handlePlay} onMoreInfo={handleMoreInfo} />
+          <SectionRow key={config.id} config={config} onPlay={handlePlay} onMoreInfo={handleMoreInfo} hideIfSeen={hideSeenItems} />
         ))}
 
         {/* Skeletons pendant le chargement */}

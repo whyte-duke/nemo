@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
 import StepServices from "@/components/onboarding/StepServices";
 import StepImport from "@/components/onboarding/StepImport";
+import StepDiscover from "@/components/onboarding/StepDiscover";
 import StepDone from "@/components/onboarding/StepDone";
 
 export interface ImportResults {
@@ -48,6 +49,10 @@ function OnboardingContent() {
     goToStep(3);
   };
 
+  const handleDiscoverNext = () => {
+    goToStep(4);
+  };
+
   return (
     <OnboardingShell step={step}>
       {step === 1 && (
@@ -60,6 +65,9 @@ function OnboardingContent() {
         />
       )}
       {step === 3 && (
+        <StepDiscover onNext={handleDiscoverNext} />
+      )}
+      {step === 4 && (
         <StepDone imports={importResults} />
       )}
     </OnboardingShell>

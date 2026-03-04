@@ -121,6 +121,11 @@ export interface TMDbMovie {
   } | null;
 }
 
+export interface TMDbKeyword {
+  id: number;
+  name: string;
+}
+
 export interface TMDbMovieDetail extends TMDbMovie {
   budget?: number;
   revenue?: number;
@@ -135,6 +140,7 @@ export interface TMDbMovieDetail extends TMDbMovie {
   recommendations: TMDbPaginatedResponse<TMDbMovie>;
   release_dates: TMDbReleaseDates;
   "watch/providers": TMDbWatchProviderResult;
+  keywords?: { keywords: TMDbKeyword[] };
 }
 
 // ─── Série TV (TV Show) ───────────────────────────────────────────────────────
@@ -211,6 +217,7 @@ export interface TMDbTVShowDetail extends TMDbTVShow {
     tvdb_id?: number | null;
     wikidata_id?: string | null;
   };
+  keywords?: { results: TMDbKeyword[] };
 }
 
 // ─── Personne / Acteur ────────────────────────────────────────────────────────

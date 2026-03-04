@@ -46,8 +46,8 @@ export default function AmisPage() {
   }
 
   return (
-    <div className="bg-[#0b0d12] min-h-dvh pt-20">
-        <div className="max-w-5xl mx-auto px-6 sm:px-12 py-10">
+    <div className="bg-[#0b0d12] min-h-dvh">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-4 sm:py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-3">

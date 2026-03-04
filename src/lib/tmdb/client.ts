@@ -101,7 +101,7 @@ export async function getMovieSummary(
 
 export async function getMovieDetail(id: number): Promise<TMDbMovieDetail> {
   return tmdbFetch(`/movie/${id}`, {
-    append_to_response: "credits,videos,images,similar,recommendations,release_dates,watch/providers",
+    append_to_response: "credits,videos,images,similar,recommendations,release_dates,watch/providers,keywords",
     include_image_language: "fr,null,en",
   });
 }
@@ -133,7 +133,7 @@ export async function getTVShowSummary(
 
 export async function getTVShowDetail(id: number): Promise<TMDbTVShowDetail> {
   return tmdbFetch(`/tv/${id}`, {
-    append_to_response: "credits,videos,images,similar,recommendations,content_ratings,watch/providers,external_ids",
+    append_to_response: "credits,videos,images,similar,recommendations,content_ratings,watch/providers,external_ids,keywords",
     include_image_language: "fr,null,en",
   });
 }

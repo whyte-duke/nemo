@@ -29,6 +29,7 @@ import { SeasonDownloadModal } from "@/components/download/SeasonDownloadModal";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
 import { useAuth } from "@/hooks/use-auth";
 import { useJellyfinLibraryCheck } from "@/hooks/use-jellyfin-library";
+import { useItemRecommendation } from "@/lib/recommendations/context";
 import { useItemProgress, useMarkAsWatched, isEpisodeWatched } from "@/hooks/use-watch-history";
 import { useStream } from "@/providers/stream-provider";
 import { useTVSeason } from "@/hooks/use-tmdb";
@@ -104,25 +105,19 @@ function SeasonSelector({
 function EpisodeCard({
   ep,
   onPlay,
-  onDownload,
-  showDownload,
   isWatched,
-  onMarkAsWatched,
-  showMarkAsWatched,
-  isMarkingWatched,
 }: {
   ep: TMDbEpisode;
   onPlay: (epNum: number) => void;
-  onDownload?: (epNum: number) => void;
-  showDownload?: boolean;
   isWatched?: boolean;
-  onMarkAsWatched?: (epNum: number) => void;
-  showMarkAsWatched?: boolean;
-  isMarkingWatched?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const showExpand = ep.overview && ep.overview.length > 120;
+  const showExpand = ep.overview && ep.overview.length > 80;
   const stillUrl = tmdbImage.still(ep.still_path, "w300");
+  // Première phrase uniquement pour l'aperçu
+  const firstSentence = ep.overview
+    ? (ep.overview.match(/^[^.!?]+[.!?]/) ?? [ep.overview.slice(0, 90)])[0] ?? ep.overview.slice(0, 90)
+    : "";
 
   return (
     <div
@@ -136,20 +131,20 @@ function EpisodeCard({
         }
       }}
       className={cn(
-        "group flex gap-4 rounded-xl hover:bg-white/5 transition-colors p-3 cursor-pointer",
+        "group flex items-start rounded-xl overflow-hidden hover:bg-white/5 transition-colors cursor-pointer",
         isWatched && "opacity-90"
       )}
       aria-label={`Lire l'épisode ${ep.episode_number} : ${ep.name}`}
     >
-      {/* Miniature 16:9 */}
-      <div className="relative shrink-0 w-36 sm:w-44 aspect-video rounded-lg overflow-hidden bg-nemo-surface2">
+      {/* Miniature 16:9 — flush gauche, pas de marge */}
+      <div className="relative shrink-0 w-32 sm:w-44 aspect-video bg-nemo-surface2">
         {stillUrl ? (
           <Image
             src={stillUrl}
             alt={ep.name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 640px) 144px, 176px"
+            sizes="(max-width: 640px) 128px, 176px"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-white/5">
@@ -166,98 +161,53 @@ function EpisodeCard({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="absolute top-2 left-2 flex items-center justify-center size-7 rounded-full bg-nemo-accent/90 text-black shadow-lg"
+              className="absolute top-2 left-2 flex items-center justify-center size-6 rounded-full bg-nemo-accent/90 text-black shadow-lg"
               aria-hidden
             >
-              <CheckCircle2 className="size-4 fill-current" />
+              <CheckCircle2 className="size-3.5 fill-current" />
             </motion.div>
           )}
         </AnimatePresence>
         {/* Overlay play */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors duration-200">
-          <div className="size-10 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg">
-            <Play className="size-4 fill-black text-black ml-0.5" />
+          <div className="size-9 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg">
+            <Play className="size-3.5 fill-black text-black ml-0.5" />
           </div>
         </div>
       </div>
 
       {/* Infos */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-white/30 text-sm tabular-nums font-medium shrink-0">
+      <div className="flex-1 min-w-0 flex flex-col justify-center px-3 py-2">
+        {/* Ligne titre + méta droite */}
+        <div className="flex items-start gap-2 mb-0.5">
+          <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
+            <span className="text-white/30 text-xs tabular-nums font-medium shrink-0">
               {ep.episode_number}
             </span>
-            <h3 className="text-white font-semibold text-sm leading-snug text-pretty truncate">
+            <h3 className="text-white font-semibold text-sm leading-snug text-pretty line-clamp-2">
               {ep.name}
             </h3>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Durée + note empilées à droite */}
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
             {ep.runtime && (
               <span className="text-white/40 text-xs tabular-nums">
                 {ep.runtime} min
               </span>
             )}
-            {showMarkAsWatched && onMarkAsWatched && !isWatched && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onMarkAsWatched(ep.episode_number);
-                }}
-                disabled={isMarkingWatched}
-                aria-label={`Marquer l'épisode ${ep.episode_number} comme vu`}
-                className="flex items-center justify-center size-8 rounded-full border border-white/25 bg-white/5 hover:bg-nemo-accent/20 hover:border-nemo-accent/50 text-white/60 hover:text-nemo-accent transition-all duration-200 disabled:opacity-50"
-              >
-                {isMarkingWatched ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : (
-                  <CheckCircle2 className="size-4" />
-                )}
-              </button>
-            )}
-            {showDownload && onDownload && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onDownload(ep.episode_number);
-                }}
-                aria-label={`Télécharger l'épisode ${ep.episode_number}`}
-                className="flex items-center justify-center size-7 rounded-full bg-[#00a4dc]/0 hover:bg-[#00a4dc]/18 border border-transparent hover:border-[#00a4dc]/30 text-white/25 hover:text-[#00a4dc] transition-all duration-200"
-              >
-                <Download className="size-3.5" />
-              </button>
+            {ep.vote_average > 0 && (
+              <span className="flex items-center gap-0.5 text-nemo-accent text-xs font-medium">
+                <Star className="size-3 fill-current" />
+                {ep.vote_average.toFixed(1)}
+              </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mb-2 flex-wrap">
-          {ep.air_date && (
-            <span className="text-white/35 text-xs">
-              {formatDate(ep.air_date)}
-            </span>
-          )}
-          {ep.vote_average > 0 && (
-            <span className="flex items-center gap-0.5 text-nemo-accent text-xs font-medium">
-              <Star className="size-3 fill-current" />
-              {ep.vote_average.toFixed(1)}
-            </span>
-          )}
-        </div>
-
+        {/* Description — première phrase + "Voir plus" inline */}
         {ep.overview && (
-          <>
-            <p
-              className={cn(
-                "text-white/50 text-xs leading-relaxed text-pretty",
-                !expanded && "line-clamp-2"
-              )}
-            >
-              {ep.overview}
-            </p>
+          <p className="text-white/35 text-[11px] leading-snug text-pretty">
+            {expanded ? ep.overview : firstSentence}
             {showExpand && (
               <button
                 type="button"
@@ -266,13 +216,13 @@ function EpisodeCard({
                   e.stopPropagation();
                   setExpanded((v) => !v);
                 }}
-                className="text-white/30 hover:text-white/60 text-xs mt-1 w-fit transition-colors focus:outline-none focus:ring-2 focus:ring-nemo-accent/50 rounded"
+                className="text-white/40 hover:text-white/60 text-[11px] ml-1 transition-colors focus:outline-none"
                 aria-expanded={expanded}
               >
-                {expanded ? "Voir moins" : "Voir plus"}
+                {expanded ? "Réduire" : "Voir plus"}
               </button>
             )}
-          </>
+          </p>
         )}
       </div>
     </div>
@@ -301,6 +251,7 @@ export function TVDetailContent({ show }: Props) {
   const { mutate: toggleList } = useToggleMyList();
   const { interaction, setInteraction } = useInteraction(show.id, "tv");
   const { data: jellyfinLibrary } = useJellyfinLibraryCheck(show.id, "tv");
+  const recommendation = useItemRecommendation(show.id, "tv");
   const { data: seasonData, isLoading: seasonLoading } = useTVSeason(show.id, selectedSeason);
   const showProgress = useItemProgress(show.id, "tv");
   const { mutateAsync: markAsWatched, isPending: isMarkingWatched } = useMarkAsWatched();
@@ -492,6 +443,19 @@ export function TVDetailContent({ show }: Props) {
                 Disponible sur Jellyfin
               </span>
             )}
+            {recommendation && recommendation.score > 0.65 && (
+              <span className={cn(
+                "section-label flex items-center gap-1",
+                recommendation.reason_type === "taste_match" ? "text-nemo-accent! border-nemo-accent/30!" :
+                recommendation.reason_type === "social" ? "text-blue-300! border-blue-400/30!" :
+                "text-amber-300! border-amber-400/30!"
+              )}>
+                {recommendation.reason_type === "taste_match" && recommendation.score > 0.80 ? "✦ Vous allez adorer" :
+                 recommendation.reason_type === "taste_match" ? "✦ Pour vous" :
+                 recommendation.reason_type === "social" ? "👥 Vos amis ont aimé" :
+                 "⭐ Pépite"}
+              </span>
+            )}
           </div>
 
           {/* Synopsis (une seule fois, dans le hero) */}
@@ -512,10 +476,10 @@ export function TVDetailContent({ show }: Props) {
             {trailerKey && (
               <button
                 onClick={() => setShowTrailer(true)}
-                className="btn-glass-pill px-5 py-3"
+                aria-label="Bande-annonce"
+                className="flex items-center justify-center size-11 rounded-full border border-white/30 hover:border-white/60 glass text-white transition-all"
               >
-                <Clapperboard className="size-4 shrink-0" />
-                Bande-annonce
+                <Clapperboard className="size-5" />
               </button>
             )}
 
@@ -524,10 +488,15 @@ export function TVDetailContent({ show }: Props) {
                 onClick={() =>
                   toggleList({ tmdbId: show.id, mediaType: "tv", action: isInList ? "remove" : "add" })
                 }
-                className="btn-glass-pill px-5 py-3"
+                aria-label={isInList ? "Retirer de Ma Liste" : "Ajouter à Ma Liste"}
+                className={cn(
+                  "flex items-center justify-center size-11 rounded-full border transition-all",
+                  isInList
+                    ? "bg-nemo-accent/20 border-nemo-accent text-nemo-accent"
+                    : "glass border-white/30 hover:border-white/60 text-white"
+                )}
               >
-                {isInList ? <Check className="size-4 shrink-0" /> : <Plus className="size-4 shrink-0" />}
-                {isInList ? "Dans Ma Liste" : "Ma Liste"}
+                {isInList ? <Check className="size-5" /> : <Plus className="size-5" />}
               </button>
             )}
 
@@ -623,7 +592,7 @@ export function TVDetailContent({ show }: Props) {
           {/* Séparateur */}
           <div className="h-px bg-white/8 mb-2" />
 
-          <div className="divide-y divide-white/5">
+          <div className="flex flex-col gap-1">
             {seasonLoading && (
               <>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -650,12 +619,7 @@ export function TVDetailContent({ show }: Props) {
                 key={ep.id}
                 ep={ep}
                 onPlay={(epNum) => void handlePlayEpisode(epNum)}
-                onDownload={(epNum) => void handleDownloadEpisode(epNum)}
-                showDownload={!!(user && !jellyfinLibrary?.inLibrary)}
                 isWatched={isEpisodeWatched(showProgress, selectedSeason, ep.episode_number)}
-                onMarkAsWatched={handleMarkEpisodeAsWatched}
-                showMarkAsWatched={!!user}
-                isMarkingWatched={markingEpisode === ep.episode_number}
               />
             ))}
           </div>
