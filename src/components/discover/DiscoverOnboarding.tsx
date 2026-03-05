@@ -46,20 +46,23 @@ const GESTURE_STEPS: GestureStep[] = [
 
 interface DiscoverOnboardingProps {
   onComplete: () => void;
+  /** When true, renders inline (no fixed overlay) for use inside onboarding shell */
+  embedded?: boolean;
 }
 
-export function DiscoverOnboarding({ onComplete }: DiscoverOnboardingProps) {
-  const [show, setShow] = useState(false);
+export function DiscoverOnboarding({ onComplete, embedded = false }: DiscoverOnboardingProps) {
+  const [show, setShow] = useState(embedded);
   const [phase, setPhase] = useState<"intro" | "gestures" | "done">("intro");
   const [gestureStep, setGestureStep] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const controls = useAnimationControls();
 
   useEffect(() => {
+    if (embedded) return;
     if (typeof window !== "undefined" && !localStorage.getItem("nemo_discover_onboarded")) {
       setShow(true);
     }
-  }, []);
+  }, [embedded]);
 
   const runGestureAnimation = useCallback(
     async (step: GestureStep) => {
@@ -106,6 +109,7 @@ export function DiscoverOnboarding({ onComplete }: DiscoverOnboardingProps) {
 
   const handleDismiss = () => {
     localStorage.setItem("nemo_discover_onboarded", "1");
+    setShow(false);
     onComplete();
   };
 
@@ -117,7 +121,12 @@ export function DiscoverOnboarding({ onComplete }: DiscoverOnboardingProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 bg-[#080a0f] flex flex-col"
+      className={cn(
+        "flex flex-col",
+        embedded
+          ? "relative min-h-[500px]"
+          : "fixed inset-0 z-50 bg-[#080a0f]"
+      )}
     >
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
@@ -155,6 +164,12 @@ export function DiscoverOnboarding({ onComplete }: DiscoverOnboardingProps) {
               transition={{ duration: 0.25 }}
               className="flex flex-col items-center gap-6 w-full"
             >
+              {/* Instruction (above card so downward animations don't cover it) */}
+              <div className="text-center space-y-1">
+                <p className="text-white font-bold text-xl">{currentGesture.text}</p>
+                <p className="text-white/50 text-sm">{currentGesture.subtext}</p>
+              </div>
+
               {/* Fake card */}
               <div className="relative w-52 h-72">
                 <motion.div
@@ -181,12 +196,6 @@ export function DiscoverOnboarding({ onComplete }: DiscoverOnboardingProps) {
                     {currentGesture.label}
                   </div>
                 </motion.div>
-              </div>
-
-              {/* Instruction */}
-              <div className="text-center space-y-1">
-                <p className="text-white font-bold text-xl">{currentGesture.text}</p>
-                <p className="text-white/50 text-sm">{currentGesture.subtext}</p>
               </div>
 
               {/* Step dots */}
@@ -224,7 +233,7 @@ export function DiscoverOnboarding({ onComplete }: DiscoverOnboardingProps) {
       </div>
 
       {/* Bottom action */}
-      <div className="shrink-0 px-6 pb-12 space-y-2">
+      <div className={cn("shrink-0 px-6 space-y-2", embedded ? "pb-4" : "pb-12")}>
         <button
           onClick={handleNext}
           className="w-full py-4 bg-nemo-accent hover:bg-[#f0c85a] active:scale-95 text-black font-bold rounded-2xl transition-all text-base"

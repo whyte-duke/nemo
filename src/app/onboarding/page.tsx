@@ -147,7 +147,7 @@ function OnboardingContent() {
       )}
 
       {currentStepKey === "import" && (
-        <StepImport onNext={handleImportNext} initialResults={importResults} />
+        <StepImport onNext={handleImportNext} initialResults={importResults} role={effectiveRole} />
       )}
 
       {currentStepKey === "discover" && (
