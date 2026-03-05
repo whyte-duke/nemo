@@ -60,7 +60,8 @@ export async function GET(request: NextRequest) {
     supabase
       .from("interactions")
       .select("tmdb_id, media_type, type")
-      .eq("user_id", user.id) as Promise<{ data: Array<{ tmdb_id: number; media_type: string; type: string | null }> | null }>,
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }) as Promise<{ data: Array<{ tmdb_id: number; media_type: string; type: string | null }> | null }>,
     supabase
       .from("friendships")
       .select("user_id, friend_id")
@@ -92,8 +93,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Top 10 liked items — base du calcul de similarité (interactions explicites)
-  // Les titres seront enrichis depuis les candidats TMDB après fetchCandidates
+  // Top 10 liked items les plus récents — base du calcul de similarité
+  // Triés par ordre d'insertion (les plus récents d'abord via la query .order ci-dessous)
   const likedItemsBase: Array<{ tmdb_id: number; media_type: "movie" | "tv" }> = (interacted ?? [])
     .filter((r) => r.type === "like")
     .slice(0, 10)
@@ -121,22 +122,18 @@ export async function GET(request: NextRequest) {
     if (t.name) candidateTitleMap.set(`${t.id}-tv`, t.name);
   }
 
-  // Construit les LikedItemRef avec titres pour loadEnrichedSimilarityMap
-  // Note : si le liked item n'est pas dans les candidats, title sera undefined
+  // Enrichit sourceTitle dans la similarityMap en mémoire (évite un 2e appel DB)
   const likedItems: LikedItemRef[] = likedItemsBase.map((r) => ({
     ...r,
     title: candidateTitleMap.get(`${r.tmdb_id}-${r.media_type}`),
   }));
 
-  // Re-charge la similarityMap avec les titres si certains liked items n'avaient pas de titre
-  // Optimisation : seulement si au moins un liked item a un titre disponible
-  const likedItemsWithTitles = likedItems.filter((l) => l.title);
-  let finalSimilarityMap = enrichedSimilarityMap;
-  if (likedItemsWithTitles.length > 0 && likedItemsBase.length > 0) {
-    // Re-charge avec titres pour enrichir reason_detail.sourceTitle
-    finalSimilarityMap = await loadEnrichedSimilarityMap(likedItems).catch(
-      (): EnrichedSimilarityMap => enrichedSimilarityMap
-    );
+  const finalSimilarityMap: EnrichedSimilarityMap = new Map(enrichedSimilarityMap);
+  for (const item of likedItems) {
+    if (!item.title) continue;
+    const key = `${item.tmdb_id}-${item.media_type}`;
+    const existing = finalSimilarityMap.get(key);
+    if (existing) finalSimilarityMap.set(key, { ...existing, sourceTitle: item.title });
   }
 
   // Fire-and-forget : refresh similar_items pour les liked items périmés

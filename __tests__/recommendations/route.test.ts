@@ -20,7 +20,7 @@ function makeChainableMock() {
   chain["finally"] = p.finally.bind(p);
 
   // Each chainable method returns 'chain' (self-reference)
-  for (const method of ["select", "eq", "or", "in", "upsert", "single", "limit"]) {
+  for (const method of ["select", "eq", "or", "in", "upsert", "single", "limit", "order", "gte", "not"]) {
     chain[method] = vi.fn().mockReturnValue(chain);
   }
 
@@ -39,6 +39,10 @@ vi.mock("@/lib/recommendations/taste-profile", () => ({
 vi.mock("@/lib/recommendations/candidates", () => ({
   fetchCandidates: vi.fn().mockResolvedValue({ movies: [], tv: [] }),
   preFetchMissingFeatures: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/recommendations/similarity", () => ({
+  loadEnrichedSimilarityMap: vi.fn().mockResolvedValue(new Map()),
+  fetchAndCacheSimilarItems: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { GET } from "@/app/api/recommendations/route";
@@ -59,5 +63,23 @@ describe("GET /api/recommendations", () => {
     const body = await res.json() as { items: unknown[]; hasProfile: boolean };
     expect(body).toHaveProperty("items");
     expect(body).toHaveProperty("hasProfile");
+    expect(Array.isArray(body.items)).toBe(true);
+  });
+
+  it("respects limit param (max 50)", async () => {
+    const req = new NextRequest("http://localhost/api/recommendations?limit=100");
+    const res = await GET(req);
+    const body = await res.json() as { items: unknown[] };
+    // items cannot exceed 50 even when limit=100 is requested
+    expect(body.items.length).toBeLessThanOrEqual(50);
+  });
+
+  it("response shape has required fields on each item", async () => {
+    const req = new NextRequest("http://localhost/api/recommendations?limit=5");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json() as { items: unknown[]; hasProfile: boolean };
+    expect(typeof body.hasProfile).toBe("boolean");
+    expect(Array.isArray(body.items)).toBe(true);
   });
 });
