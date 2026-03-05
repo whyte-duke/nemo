@@ -25,9 +25,11 @@ function computeBadgeFromLabel(label: string | null): BadgeInfo | null {
     return { label, icon: "✦", colorClass: "text-nemo-accent bg-nemo-accent/15 border-nemo-accent/30" };
   if (label === "Pour vous")
     return { label, icon: "✦", colorClass: "text-nemo-accent/80 bg-nemo-accent/10 border-nemo-accent/20" };
+  if (label.startsWith("Similaire à"))
+    return { label, icon: "🔗", colorClass: "text-purple-300 bg-purple-500/15 border-purple-500/25" };
   if (label.includes("ami"))
     return { label, icon: "👥", colorClass: "text-blue-300 bg-blue-500/15 border-blue-500/25" };
-  if (label === "Film très bien noté")
+  if (label === "Hautement noté" || label === "Film très bien noté")
     return { label, icon: "⭐", colorClass: "text-amber-300 bg-amber-500/15 border-amber-500/25" };
   if (label === "Populaire en ce moment")
     return { label, icon: "🔥", colorClass: "text-orange-300 bg-orange-500/15 border-orange-500/25" };
@@ -358,6 +360,7 @@ export function MediaCard({
 
                   {onNotInterested && (
                     <button
+                      data-test="not-interested-btn"
                       onClick={handleNotInterested}
                       aria-label="Pas intéressé"
                       title="Pas intéressé"

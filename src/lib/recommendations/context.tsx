@@ -8,7 +8,7 @@ export interface ScoredItemClient {
   tmdb_id: number;
   media_type: "movie" | "tv";
   score: number;
-  reason_type: "taste_match" | "social" | "trending" | "quality";
+  reason_type: "taste_match" | "social" | "trending" | "quality" | "similarity";
   reason_detail?: string;
 }
 
@@ -72,17 +72,21 @@ export function useItemRecommendation(
 }
 
 /**
- * Retourne un label enrichi Spotify-style pour une recommandation.
- * Ex: "Parce que vous aimez l'Action", "3 de vos amis ont aimé", "Film très bien noté"
+ * Fonction pure testable — retourne un label enrichi pour une recommandation.
+ * Ex: "Parce que vous aimez l'Action", "3 de vos amis ont aimé", "Similaire à Dune"
  */
-export function useRecommendationLabel(
-  tmdbId: number,
-  mediaType: string
+export function getRecommendationLabel(
+  reason_type: ScoredItemClient["reason_type"],
+  reason_detail: string | undefined,
+  score: number
 ): string | null {
-  const item = useItemRecommendation(tmdbId, mediaType);
-  if (!item) return null;
-
-  const { reason_type, reason_detail, score } = item;
+  if (reason_type === "similarity") {
+    if (reason_detail?.startsWith("similarity:")) {
+      const sourceTitle = reason_detail.slice(11);
+      return `Similaire à ${sourceTitle}`;
+    }
+    return "Similaire à vos goûts";
+  }
 
   if (reason_type === "taste_match") {
     if (reason_detail?.startsWith("genre:")) {
@@ -102,8 +106,23 @@ export function useRecommendationLabel(
     return "Vos amis ont aimé";
   }
 
-  if (reason_type === "quality") return "Film très bien noté";
+  if (reason_type === "quality") return "Hautement noté";
   if (reason_type === "trending") return "Populaire en ce moment";
 
   return null;
+}
+
+/**
+ * Hook React — retourne un label enrichi Spotify-style pour une recommandation.
+ * Ex: "Parce que vous aimez l'Action", "3 de vos amis ont aimé", "Film très bien noté"
+ */
+export function useRecommendationLabel(
+  tmdbId: number,
+  mediaType: string
+): string | null {
+  const item = useItemRecommendation(tmdbId, mediaType);
+  if (!item) return null;
+
+  const { reason_type, reason_detail, score } = item;
+  return getRecommendationLabel(reason_type, reason_detail, score);
 }

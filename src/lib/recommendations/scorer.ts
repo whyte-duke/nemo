@@ -41,7 +41,7 @@ export interface CandidateFeatures {
   director_ids: number[];
 }
 
-export type ReasonType = "taste_match" | "social" | "trending" | "quality";
+export type ReasonType = "taste_match" | "social" | "trending" | "quality" | "similarity";
 
 export interface ScoredItem {
   tmdb_id: number;
