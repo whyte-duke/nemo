@@ -14,16 +14,25 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CandidateFeatures } from "./scorer";
+import type { SimilarityData } from "@/types/recommendations";
+
+// Re-export SimilarityData pour les consommateurs existants
+export type { SimilarityData };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface LikedItemRef {
   tmdb_id: number;
   media_type: "movie" | "tv";
+  /** Titre optionnel — utilisé pour enrichir reason_detail en Phase 04 */
+  title?: string;
 }
 
 /** Clé de lookup : "{tmdb_id}-{media_type}" → similarityScore [0,1] */
 export type SimilarityMap = Map<string, number>;
+
+/** Clé de lookup : "{tmdb_id}-{media_type}" → SimilarityData enrichie */
+export type EnrichedSimilarityMap = Map<string, SimilarityData>;
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -231,6 +240,69 @@ export async function loadSimilarityMap(likedItems: LikedItemRef[]): Promise<Sim
     const existing = map.get(key) ?? 0;
     if (row.score > existing) {
       map.set(key, row.score);
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Charge une EnrichedSimilarityMap depuis similar_items pour un ensemble de liked items.
+ * Retourne les scores de similarité avec les métadonnées de la source (titre, tmdb_id).
+ *
+ * Les titres des liked items doivent être fournis via `likedItems[].title`.
+ * Si un titre n'est pas disponible, sourceTitle sera une chaîne vide.
+ *
+ * Utilisé par le scorer en Phase 04 pour alimenter reason_detail.sourceTitle.
+ *
+ * @param likedItems  Top 10 liked items de l'utilisateur (avec titre optionnel)
+ * @returns EnrichedSimilarityMap : "{similar_tmdb_id}-{media_type}" → SimilarityData
+ */
+export async function loadEnrichedSimilarityMap(
+  likedItems: LikedItemRef[]
+): Promise<EnrichedSimilarityMap> {
+  if (likedItems.length === 0) return new Map();
+
+  // Construire une map titre par source pour l'enrichissement
+  const sourceTitleMap = new Map<string, { title: string; tmdbId: number }>();
+  for (const item of likedItems) {
+    sourceTitleMap.set(`${item.tmdb_id}-${item.media_type}`, {
+      title: item.title ?? "",
+      tmdbId: item.tmdb_id,
+    });
+  }
+
+  // Admin client — similar_items est une table de cache interne
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as any;
+  const likedIds = likedItems.map((l) => l.tmdb_id);
+
+  const { data } = await supabase
+    .from("similar_items")
+    .select("source_tmdb_id, source_media_type, similar_tmdb_id, similar_media_type, score")
+    .in("source_tmdb_id", likedIds) as {
+      data: Array<{
+        source_tmdb_id: number;
+        source_media_type: string;
+        similar_tmdb_id: number;
+        similar_media_type: string;
+        score: number;
+      }> | null;
+    };
+
+  const map: EnrichedSimilarityMap = new Map();
+  for (const row of data ?? []) {
+    const key = `${row.similar_tmdb_id}-${row.similar_media_type}`;
+    const existing = map.get(key);
+    // Garde le score max si plusieurs liked items ont le même similar
+    if (!existing || row.score > existing.score) {
+      const sourceKey = `${row.source_tmdb_id}-${row.source_media_type}`;
+      const source = sourceTitleMap.get(sourceKey);
+      map.set(key, {
+        score: row.score,
+        sourceTitle: source?.title ?? "",
+        sourceTmdbId: source?.tmdbId ?? row.source_tmdb_id,
+      });
     }
   }
 

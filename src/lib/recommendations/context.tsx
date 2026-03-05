@@ -3,13 +3,14 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { TMDB_GENRE_NAMES } from "@/lib/tmdb/genres";
+import type { ReasonType, ReasonDetail } from "@/types/recommendations";
 
 export interface ScoredItemClient {
   tmdb_id: number;
   media_type: "movie" | "tv";
   score: number;
-  reason_type: "taste_match" | "social" | "trending" | "quality";
-  reason_detail?: string;
+  reason_type: ReasonType;
+  reason_detail?: ReasonDetail;
 }
 
 interface RecommendationsState {
@@ -74,6 +75,9 @@ export function useItemRecommendation(
 /**
  * Retourne un label enrichi Spotify-style pour une recommandation.
  * Ex: "Parce que vous aimez l'Action", "3 de vos amis ont aimé", "Film très bien noté"
+ *
+ * Phase 04 : reason_detail est maintenant un objet typé (ReasonDetail),
+ * plus une chaîne freeform comme en Phase 03.
  */
 export function useRecommendationLabel(
   tmdbId: number,
@@ -84,9 +88,16 @@ export function useRecommendationLabel(
 
   const { reason_type, reason_detail, score } = item;
 
+  if (reason_type === "similarity") {
+    if (reason_detail?.sourceTitle) {
+      return `Parce que vous avez regardé ${reason_detail.sourceTitle}`;
+    }
+    return "Similaire à vos films regardés";
+  }
+
   if (reason_type === "taste_match") {
-    if (reason_detail?.startsWith("genre:")) {
-      const genreId = Number(reason_detail.slice(6));
+    if (reason_detail?.topGenre) {
+      const genreId = Number(reason_detail.topGenre);
       const genreName = TMDB_GENRE_NAMES[genreId];
       if (genreName) return `Parce que vous aimez ${genreName}`;
     }
@@ -94,11 +105,9 @@ export function useRecommendationLabel(
   }
 
   if (reason_type === "social") {
-    if (reason_detail?.startsWith("social:")) {
-      const count = Number(reason_detail.slice(7));
-      if (count === 1) return "1 de vos amis a aimé";
-      if (count > 1) return `${count} de vos amis ont aimé`;
-    }
+    const count = reason_detail?.friendCount ?? 0;
+    if (count === 1) return "1 de vos amis a aimé";
+    if (count > 1) return `${count} de vos amis ont aimé`;
     return "Vos amis ont aimé";
   }
 

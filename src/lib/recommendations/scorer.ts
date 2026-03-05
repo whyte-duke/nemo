@@ -1,21 +1,29 @@
 /**
- * Scorer — Phase 4 du système de recommandation
+ * Scorer — Phase 04 du système de recommandation
  *
- * Score final pour un candidat M et un utilisateur U :
+ * Score final avec profil (Phase 04) :
  *   score(U, M) =
- *     0.60 × taste_score(U, M)   (genres / réalisateurs / acteurs / keywords)
- *   + 0.10 × trending_score(M)   (popularité TMDB normalisée)
- *   + 0.05 × quality_score(M)    (vote_average / 10)
+ *     0.40 × taste_score(U, M)      (genres / réalisateurs / acteurs / keywords)
+ *   + 0.20 × similarity_score(M)    (similarité contenu — Phase 03)
+ *   + 0.20 × social_score(U, M)     (amis qui ont liké ce titre)
+ *   + 0.10 × trending_score(M)      (popularité TMDB normalisée)
+ *   + 0.10 × quality_score(M)       (vote_average pondéré par vote_count)
+ *   Total = 1.00
  *
- * Note : social_score (Phase 5) et similarity_score (coûteux) sont réservés.
- * Les poids taste et trending absorberont 0.25 supplémentaires lors de la Phase 5.
+ * Fallback sans profil :
+ *   0.55 × trending_score
+ *   0.25 × quality_score
+ *   0.20 × social_score
+ *   Total = 1.00
  */
 
 import "server-only";
 import { computeTasteScore } from "./taste-profile";
-import { getSimilarityScore } from "./similarity";
 import type { TasteProfile } from "./taste-profile";
-import type { LikedItemRef, SimilarityMap } from "./similarity";
+import type { ReasonType, ReasonDetail, SimilarityData } from "@/types/recommendations";
+
+// Re-exports pour compatibilité avec les imports existants
+export type { ReasonType, ReasonDetail, SimilarityData };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,17 +51,16 @@ export interface CandidateFeatures {
   director_ids: number[];
 }
 
-export type ReasonType = "taste_match" | "social" | "trending" | "quality";
-
 export interface ScoredItem {
   tmdb_id: number;
   media_type: "movie" | "tv";
   score: number;
   reason_type: ReasonType;
-  /** Contexte enrichi Spotify-style : "genre:28", "social:3" */
-  reason_detail?: string;
-  /** Score de similarité contenu [0,1] — calculé en Phase 03, pondéré en Phase 04 */
-  similarity_score: number;
+  /**
+   * Contexte enrichi pour l'UI Phase 05 : "Parce que vous avez regardé X",
+   * "X amis ont aimé", "Correspond à vos goûts (Genre Y)".
+   */
+  reason_detail?: ReasonDetail;
   // ── Champs d'affichage ──
   title?: string;
   name?: string;
@@ -72,18 +79,23 @@ export interface ScoredItem {
 /**
  * Score un candidat TMDB contre le profil de goût de l'utilisateur.
  *
- * Poids (Phase 4 + 5) :
- *   0.45 × taste_score       (genres / acteurs / réalisateurs / keywords)
+ * Poids avec profil (Phase 04) :
+ *   0.40 × taste_score       (genres / acteurs / réalisateurs / keywords)
+ *   0.20 × similarity_score  (similarité contenu — Phase 03)
  *   0.20 × social_score      (amis qui ont liké ce titre)
  *   0.10 × trending_score    (popularité TMDB normalisée)
- *   0.05 × quality_score     (vote_average pondéré par vote_count)
- *   (+ 0.20 similarity_score réservé Phase 4)
+ *   0.10 × quality_score     (vote_average pondéré par vote_count)
+ *   Total = 1.00
+ *
+ * Fallback sans profil :
+ *   0.55 × trending_score
+ *   0.25 × quality_score
+ *   0.20 × social_score
+ *   Total = 1.00
  *
  * @param friendLikes    Map `tmdb_id-media_type` → nombre d'amis ayant liké
  * @param friendCount    Nombre total d'amis (pour normaliser le score social)
- * @param similarityMap  Map `tmdb_id-media_type` → score TMDB /similar (optionnel)
- * @param likedItems     Top 10 liked items pour le Jaccard fallback (optionnel)
- * @param featuresMap    Map `tmdb_id-media_type` → features pour Jaccard (optionnel)
+ * @param similarityMap  Map `tmdb_id-media_type` → SimilarityData enrichie (optionnel)
  */
 export function scoreItem(
   profile: TasteProfile | null,
@@ -92,9 +104,7 @@ export function scoreItem(
   mediaType: "movie" | "tv",
   friendLikes?: Map<string, number>,
   friendCount?: number,
-  similarityMap?: SimilarityMap,
-  likedItems?: LikedItemRef[],
-  featuresMap?: Map<string, CandidateFeatures>
+  similarityMap?: Map<string, SimilarityData>
 ): ScoredItem {
   // Trending : popularité TMDB (max ~1000 pour les blockbusters)
   const trendingScore = Math.min(item.popularity / 500, 1.0);
@@ -112,19 +122,12 @@ export function scoreItem(
       ? Math.min(likeCount / Math.max(friendCount, 3), 1.0)
       : 0;
 
-  // Similarity : calculé mais poids = 0 jusqu'à Phase 04 (réservé)
-  const similarityScore = similarityMap !== undefined
-    ? getSimilarityScore(
-        item.id,
-        mediaType,
-        likedItems ?? [],
-        featuresMap ?? new Map(),
-        similarityMap
-      )
-    : 0;
+  // Similarité : score de Phase 03, plafonné à [0, 1]
+  const simData = similarityMap?.get(`${item.id}-${mediaType}`);
+  const simScore = Math.min(Math.max(simData?.score ?? 0, 0), 1.0);
 
   let reason_type: ReasonType = "trending";
-  let reason_detail: string | undefined;
+  let reason_detail: ReasonDetail | undefined;
 
   if (profile && features) {
     const tasteRaw = computeTasteScore(
@@ -135,15 +138,23 @@ export function scoreItem(
       features.keyword_ids
     );
     // computeTasteScore retourne [-1, 1] → normalise en [0, 1]
-    const tasteNorm = (tasteRaw + 1) / 2;
+    const tasteNorm = Math.min(Math.max((tasteRaw + 1) / 2, 0), 1.0);
 
     const score =
-      0.45 * tasteNorm +
+      0.40 * tasteNorm +
+      0.20 * simScore +
       0.20 * socialScore +
       0.10 * trendingScore +
-      0.05 * qualityScore;
+      0.10 * qualityScore;
 
-    if (tasteNorm > 0.65) {
+    // Priorité : similarity > taste_match > social > quality > trending
+    if (simScore > 0.5 && simData) {
+      reason_type = "similarity";
+      reason_detail = {
+        sourceTitle: simData.sourceTitle,
+        sourceTmdbId: simData.sourceTmdbId,
+      };
+    } else if (tasteNorm > 0.65) {
       reason_type = "taste_match";
       // Genre dominant du profil qui est aussi dans les features
       const topGenreId = Object.entries(profile.genre_scores)
@@ -151,32 +162,34 @@ export function scoreItem(
         .sort((a, b) => b[1] - a[1])
         .map(([id]) => Number(id))
         .find((id) => features.genre_ids.includes(id));
-      if (topGenreId !== undefined) reason_detail = `genre:${topGenreId}`;
+      if (topGenreId !== undefined) {
+        reason_detail = { topGenre: String(topGenreId) };
+      }
     } else if (socialScore > 0.4) {
       reason_type = "social";
-      const likeCount = friendLikes?.get(`${item.id}-${mediaType}`) ?? 0;
-      reason_detail = `social:${likeCount}`;
+      reason_detail = { friendCount: likeCount };
     } else if (qualityScore > 0.82) {
       reason_type = "quality";
     }
 
-    return buildItem(item, mediaType, score, reason_type, reason_detail, similarityScore);
+    return buildItem(item, mediaType, score, reason_type, reason_detail);
   }
 
   // Pas de profil ou features manquantes → fallback trending + quality + social
+  // 0.55 + 0.25 + 0.20 = 1.00
   const score =
     0.55 * trendingScore +
     0.25 * qualityScore +
     0.20 * socialScore;
 
-  if (qualityScore > 0.85) reason_type = "quality";
-  else if (socialScore > 0.4) {
+  if (qualityScore > 0.85) {
+    reason_type = "quality";
+  } else if (socialScore > 0.4) {
     reason_type = "social";
-    const likeCount = friendLikes?.get(`${item.id}-${mediaType}`) ?? 0;
-    reason_detail = `social:${likeCount}`;
+    reason_detail = { friendCount: likeCount };
   }
 
-  return buildItem(item, mediaType, score, reason_type, reason_detail, similarityScore);
+  return buildItem(item, mediaType, score, reason_type, reason_detail);
 }
 
 function buildItem(
@@ -184,8 +197,7 @@ function buildItem(
   mediaType: "movie" | "tv",
   score: number,
   reason_type: ReasonType,
-  reason_detail?: string,
-  similarity_score = 0
+  reason_detail?: ReasonDetail
 ): ScoredItem {
   return {
     tmdb_id: item.id,
@@ -193,7 +205,6 @@ function buildItem(
     score,
     reason_type,
     reason_detail,
-    similarity_score,
     title: item.title,
     name: item.name,
     poster_path: item.poster_path,

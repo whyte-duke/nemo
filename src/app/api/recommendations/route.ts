@@ -7,6 +7,7 @@
  *   1. Charge le profil de goût (user_taste_profiles)
  *   2. Charge les exclusions (interactions existantes) + likes amis
  *   3. Fetch les candidats TMDB diversifiés (6 sources fixes + genre-based discover)
+ *      + loadEnrichedSimilarityMap en parallèle (Phase 04)
  *   4. Filtre les exclusions
  *   4b. Charge les features DB — chargement initial
  *   4c. Pre-fetch inline des features manquantes (max 20, concurrent 5)
@@ -29,10 +30,10 @@ import { fetchCandidates, preFetchMissingFeatures } from "@/lib/recommendations/
 import type { ScoredItem, TMDbCandidateItem, CandidateFeatures } from "@/lib/recommendations/scorer";
 import type { TasteProfile } from "@/lib/recommendations/taste-profile";
 import {
-  loadSimilarityMap,
+  loadEnrichedSimilarityMap,
   fetchAndCacheSimilarItems,
 } from "@/lib/recommendations/similarity";
-import type { LikedItemRef } from "@/lib/recommendations/similarity";
+import type { LikedItemRef, EnrichedSimilarityMap } from "@/lib/recommendations/similarity";
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
@@ -92,17 +93,51 @@ export async function GET(request: NextRequest) {
   }
 
   // Top 10 liked items — base du calcul de similarité (interactions explicites)
-  const likedItems: LikedItemRef[] = (interacted ?? [])
+  // Les titres seront enrichis depuis les candidats TMDB après fetchCandidates
+  const likedItemsBase: Array<{ tmdb_id: number; media_type: "movie" | "tv" }> = (interacted ?? [])
     .filter((r) => r.type === "like")
     .slice(0, 10)
     .map((r) => ({ tmdb_id: r.tmdb_id, media_type: r.media_type as "movie" | "tv" }));
 
-  // 3. ── Candidats TMDB diversifiés + similarityMap (en parallèle) ──────────
+  // 3. ── Candidats TMDB diversifiés + similarityMap enrichie (en parallèle) ──
   // Sources : popular, top_rated, trending (×2 médias) + genre-based discover
-  const [{ movies: allMovies, tv: allTV }, similarityMap] = await Promise.all([
+  // Phase 04 : loadEnrichedSimilarityMap retourne Map<key, SimilarityData> avec sourceTitle
+  const [{ movies: allMovies, tv: allTV }, enrichedSimilarityMap] = await Promise.all([
     fetchCandidates(hasProfile ? profile : null),
-    loadSimilarityMap(likedItems),
+    // Charge la similarityMap — les titres seront enrichis depuis les candidats après
+    // Si Phase 03 n'est pas déployée, retourne Map vide (graceful degradation)
+    loadEnrichedSimilarityMap(likedItemsBase).catch(
+      (): EnrichedSimilarityMap => new Map()
+    ),
   ]);
+
+  // Enrichit les titres des liked items depuis les candidats TMDB (si disponibles)
+  // Les liked items populaires apparaissent souvent dans les candidats trending
+  const candidateTitleMap = new Map<string, string>();
+  for (const m of allMovies) {
+    if (m.title) candidateTitleMap.set(`${m.id}-movie`, m.title);
+  }
+  for (const t of allTV) {
+    if (t.name) candidateTitleMap.set(`${t.id}-tv`, t.name);
+  }
+
+  // Construit les LikedItemRef avec titres pour loadEnrichedSimilarityMap
+  // Note : si le liked item n'est pas dans les candidats, title sera undefined
+  const likedItems: LikedItemRef[] = likedItemsBase.map((r) => ({
+    ...r,
+    title: candidateTitleMap.get(`${r.tmdb_id}-${r.media_type}`),
+  }));
+
+  // Re-charge la similarityMap avec les titres si certains liked items n'avaient pas de titre
+  // Optimisation : seulement si au moins un liked item a un titre disponible
+  const likedItemsWithTitles = likedItems.filter((l) => l.title);
+  let finalSimilarityMap = enrichedSimilarityMap;
+  if (likedItemsWithTitles.length > 0 && likedItemsBase.length > 0) {
+    // Re-charge avec titres pour enrichir reason_detail.sourceTitle
+    finalSimilarityMap = await loadEnrichedSimilarityMap(likedItems).catch(
+      (): EnrichedSimilarityMap => enrichedSimilarityMap
+    );
+  }
 
   // Fire-and-forget : refresh similar_items pour les liked items périmés
   // Batch de 3 pour respecter les rate limits TMDB (40 req/s)
@@ -149,14 +184,35 @@ export async function GET(request: NextRequest) {
     featureMapFinal.set(`${f.tmdb_id}-${f.media_type}`, f);
   }
 
-  // 5. ── Scoring ─────────────────────────────────────────────────────────────
+  // 5. ── Scoring — Phase 04 : nouveaux poids + similarityMap enrichie ────────
+  // Formule : 0.40*taste + 0.20*similarity + 0.20*social + 0.10*trending + 0.10*quality
   const scored: ScoredItem[] = [];
 
   for (const m of movieCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-movie`), "movie", friendLikeMap, friendCount, similarityMap, likedItems, featureMapFinal));
+    scored.push(
+      scoreItem(
+        hasProfile ? profile : null,
+        m,
+        featureMapFinal.get(`${m.id}-movie`),
+        "movie",
+        friendLikeMap,
+        friendCount,
+        finalSimilarityMap
+      )
+    );
   }
   for (const m of tvCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-tv`), "tv", friendLikeMap, friendCount, similarityMap, likedItems, featureMapFinal));
+    scored.push(
+      scoreItem(
+        hasProfile ? profile : null,
+        m,
+        featureMapFinal.get(`${m.id}-tv`),
+        "tv",
+        friendLikeMap,
+        friendCount,
+        finalSimilarityMap
+      )
+    );
   }
 
   scored.sort((a, b) => b.score - a.score);
