@@ -10,7 +10,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, TrendingUp, Star, Users, Loader2 } from "lucide-react";
+import { Sparkles, TrendingUp, Star, Users, Loader2, Film } from "lucide-react";
 import Link from "next/link";
 import { useState, useCallback } from "react";
 import { MediaRow } from "@/components/media/MediaRow";
@@ -46,10 +46,11 @@ function toMediaItem(item: ScoredItem) {
 // ─── Icônes et labels par raison ─────────────────────────────────────────────
 
 const REASON_CONFIG = {
-  taste_match: { icon: Sparkles,   label: "Correspondant à vos goûts", color: "text-indigo-400" },
-  social:      { icon: Users,      label: "Aimé par vos amis",         color: "text-green-400"  },
-  trending:    { icon: TrendingUp, label: "Tendances",                  color: "text-blue-400"   },
-  quality:     { icon: Star,       label: "Très bien notés",            color: "text-amber-400"  },
+  similarity:  { icon: Film,       label: "Similaire à vos films regardés", color: "text-purple-400" },
+  taste_match: { icon: Sparkles,   label: "Correspondant à vos goûts",      color: "text-indigo-400" },
+  social:      { icon: Users,      label: "Aimé par vos amis",              color: "text-green-400"  },
+  trending:    { icon: TrendingUp, label: "Tendances",                       color: "text-blue-400"   },
+  quality:     { icon: Star,       label: "Très bien notés",                 color: "text-amber-400"  },
 } as const;
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -112,8 +113,8 @@ export default function PourVousPage() {
 
   const items = data?.items ?? [];
 
-  // Grouper par reason_type
-  const groups = (["taste_match", "social", "trending", "quality"] as const).map((reason) => ({
+  // Grouper par reason_type (Phase 04 : ajout de "similarity")
+  const groups = (["similarity", "taste_match", "social", "trending", "quality"] as const).map((reason) => ({
     reason,
     items: items.filter((i) => i.reason_type === reason),
   })).filter((g) => g.items.length > 0);

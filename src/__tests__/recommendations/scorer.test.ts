@@ -1,3 +1,10 @@
+/**
+ * Tests de régression scorer — Phase 04
+ *
+ * Ces tests vérifient la compatibilité backward et le comportement de base.
+ * Les tests complets de Phase 04 (nouveaux poids, reason_detail structuré)
+ * se trouvent dans __tests__/recommendations/scorer.test.ts.
+ */
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/recommendations/taste-profile", () => ({
@@ -6,6 +13,7 @@ vi.mock("@/lib/recommendations/taste-profile", () => ({
 
 import { scoreItem } from "@/lib/recommendations/scorer";
 import type { TasteProfile } from "@/lib/recommendations/taste-profile";
+import type { SimilarityData } from "@/types/recommendations";
 
 const mockProfile: TasteProfile = {
   genre_scores: { "28": 0.8, "12": 0.5 },
@@ -48,15 +56,23 @@ describe("scoreItem", () => {
     expect(result.score).toBeGreaterThan(0);
   });
 
-  it("expose similarity_score dans le résultat", () => {
-    const similarityMap = new Map([["100-movie", 0.75]]);
+  it("reason_type similarity avec simScore élevé (Phase 04)", () => {
+    // Phase 04: similarityMap prend SimilarityData (enrichi) au lieu de number
+    const similarityMap = new Map<string, SimilarityData>([
+      ["100-movie", { score: 0.75, sourceTitle: "Film Source", sourceTmdbId: 42 }],
+    ]);
     const result = scoreItem(mockProfile, mockItem, mockFeatures, "movie", undefined, undefined, similarityMap);
-    expect(result).toHaveProperty("similarity_score");
-    expect(result.similarity_score).toBeCloseTo(0.75);
+    // simScore 0.75 > 0.5 → reason_type = "similarity"
+    expect(result.reason_type).toBe("similarity");
+    expect(result.reason_detail?.sourceTitle).toBe("Film Source");
+    expect(result.reason_detail?.sourceTmdbId).toBe(42);
   });
 
-  it("similarity_score = 0 si candidat absent de la map et pas de features", () => {
+  it("pas de similarity_score sur ScoredItem (Phase 04 — champ supprimé)", () => {
+    // Phase 04 supprime similarity_score de ScoredItem — la similarité est maintenant
+    // dans reason_detail pour les items reason_type === "similarity"
     const result = scoreItem(null, mockItem, undefined, "movie", undefined, undefined, new Map());
-    expect(result.similarity_score).toBe(0);
+    expect(result).not.toHaveProperty("similarity_score");
+    expect(result.reason_type).toBe("trending"); // sans profil, fallback trending
   });
 });
