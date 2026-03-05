@@ -13,20 +13,21 @@ export default function OnboardingShell({ step, totalSteps, children }: Onboardi
 
   return (
     /* Desktop: full-screen backdrop centered around a floating card */
-    <div className="min-h-dvh w-full bg-[#0b0d12] flex flex-col md:items-center md:justify-center md:px-4 md:py-8">
+    <div className="min-h-dvh w-full bg-[#0b0d12] flex flex-col md:items-center md:justify-center md:px-6 md:py-8">
       {/* Card (full-screen on mobile, floating card on desktop) */}
       <div
         className={cn(
           "flex flex-col w-full bg-[#0b0d12] overflow-hidden",
           /* Mobile: full viewport height */
           "h-dvh",
-          /* Desktop: card style */
-          "md:h-auto md:max-h-[90vh] md:w-full md:max-w-lg",
+          /* Desktop: card style — wider breakpoints */
+          "md:h-auto md:max-h-[92vh] md:w-full md:max-w-xl",
+          "lg:max-w-2xl",
           "md:rounded-3xl md:ring-1 md:ring-white/10 md:shadow-2xl md:bg-[#0f1117]"
         )}
       >
         {/* Header fixe */}
-        <header className="shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 md:pt-5">
+        <header className="shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 md:pt-5 md:px-8">
           {/* Logo + step count */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-nemo-accent font-black text-xl tracking-widest">NEMO</span>
@@ -49,7 +50,7 @@ export default function OnboardingShell({ step, totalSteps, children }: Onboardi
           className={cn(
             "flex-1 overflow-y-auto",
             "px-5 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
-            "md:pb-6"
+            "md:px-8 md:pb-8"
           )}
         >
           {children}

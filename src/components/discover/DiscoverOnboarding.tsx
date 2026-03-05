@@ -138,13 +138,13 @@ export function DiscoverOnboarding({ onComplete, embedded = false }: DiscoverOnb
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="text-center space-y-5 max-w-xs mx-auto"
+              className="text-center space-y-5 max-w-xs md:max-w-sm mx-auto"
             >
-              <div className="size-20 rounded-full bg-nemo-accent/15 ring-1 ring-nemo-accent/30 flex items-center justify-center mx-auto">
-                <Sparkles className="size-9 text-nemo-accent" />
+              <div className="size-20 md:size-24 rounded-full bg-nemo-accent/15 ring-1 ring-nemo-accent/30 flex items-center justify-center mx-auto">
+                <Sparkles className="size-9 md:size-11 text-nemo-accent" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-white font-black text-2xl">Définissons tes goûts</h1>
+                <h1 className="text-white font-black text-2xl md:text-3xl">Définissons tes goûts</h1>
                 <p className="text-white/50 text-sm leading-relaxed">
                   Pour te proposer les meilleurs films et séries, on a besoin d&apos;en savoir plus sur toi.
                 </p>
@@ -166,12 +166,12 @@ export function DiscoverOnboarding({ onComplete, embedded = false }: DiscoverOnb
             >
               {/* Instruction (above card so downward animations don't cover it) */}
               <div className="text-center space-y-1">
-                <p className="text-white font-bold text-xl">{currentGesture.text}</p>
-                <p className="text-white/50 text-sm">{currentGesture.subtext}</p>
+                <p className="text-white font-bold text-xl md:text-2xl">{currentGesture.text}</p>
+                <p className="text-white/50 text-sm md:text-base">{currentGesture.subtext}</p>
               </div>
 
               {/* Fake card */}
-              <div className="relative w-52 h-72">
+              <div className="relative w-52 h-72 md:w-64 md:h-[360px]">
                 <motion.div
                   className="absolute inset-0 rounded-3xl shadow-2xl ring-1 ring-white/10"
                   animate={controls}
