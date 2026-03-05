@@ -78,21 +78,12 @@ export function useItemRecommendation(
  *
  * Phase 04 : reason_detail est maintenant un objet typé (ReasonDetail),
  * plus une chaîne freeform comme en Phase 03.
-
  */
 export function getRecommendationLabel(
   reason_type: ScoredItemClient["reason_type"],
-  reason_detail: string | undefined,
+  reason_detail: ReasonDetail | undefined,
   score: number
 ): string | null {
-  if (reason_type === "similarity") {
-    if (reason_detail?.startsWith("similarity:")) {
-      const sourceTitle = reason_detail.slice(11);
-      return `Similaire à ${sourceTitle}`;
-    }
-    return "Similaire à vos goûts";
-  }
-
   if (reason_type === "similarity") {
     if (reason_detail?.sourceTitle) {
       return `Parce que vous avez regardé ${reason_detail.sourceTitle}`;
