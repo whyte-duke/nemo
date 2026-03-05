@@ -5,12 +5,14 @@
  *
  * Flux :
  *   1. Charge le profil de goût (user_taste_profiles)
- *   2. Charge les exclusions (interactions existantes)
- *   3. Fetch 2 pages de films populaires + 2 pages de séries depuis TMDB
+ *   2. Charge les exclusions (interactions existantes) + likes amis
+ *   3. Fetch les candidats TMDB diversifiés (6 sources fixes + genre-based discover)
  *   4. Filtre les exclusions
- *   5. Charge les features disponibles depuis media_features
- *   6. Score + trie par score décroissant
- *   7. Retourne les N premiers
+ *   4b. Charge les features DB — chargement initial
+ *   4c. Pre-fetch inline des features manquantes (max 20, concurrent 5)
+ *   4d. Recharge les features après pre-fetch
+ *   5. Score + trie par score décroissant
+ *   6. Retourne les N premiers
  *
  * Le client utilise staleTime: 15min (React Query) pour éviter les refetch.
  *
@@ -23,25 +25,14 @@ import { getAuthUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTasteProfile } from "@/lib/recommendations/taste-profile";
 import { scoreItem } from "@/lib/recommendations/scorer";
+import { fetchCandidates, preFetchMissingFeatures } from "@/lib/recommendations/candidates";
 import type { ScoredItem, TMDbCandidateItem, CandidateFeatures } from "@/lib/recommendations/scorer";
 import type { TasteProfile } from "@/lib/recommendations/taste-profile";
-
-const TMDB_BASE = process.env.NEXT_PUBLIC_TMDB_BASE_URL ?? "https://api.themoviedb.org/3";
-const TMDB_KEY  = process.env.NEXT_PUBLIC_TMDB_API_KEY ?? "";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function tmdbPage<T>(endpoint: string, page: number): Promise<T[]> {
-  try {
-    const url = `${TMDB_BASE}${endpoint}?api_key=${TMDB_KEY}&language=fr-FR&region=FR&page=${page}`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return [];
-    const data = await res.json() as { results: T[] };
-    return data.results ?? [];
-  } catch {
-    return [];
-  }
-}
+import {
+  loadSimilarityMap,
+  fetchAndCacheSimilarItems,
+} from "@/lib/recommendations/similarity";
+import type { LikedItemRef } from "@/lib/recommendations/similarity";
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
@@ -67,8 +58,8 @@ export async function GET(request: NextRequest) {
   const [{ data: interacted }, { data: friends }] = await Promise.all([
     supabase
       .from("interactions")
-      .select("tmdb_id, media_type")
-      .eq("user_id", user.id) as Promise<{ data: Array<{ tmdb_id: number; media_type: string }> | null }>,
+      .select("tmdb_id, media_type, type")
+      .eq("user_id", user.id) as Promise<{ data: Array<{ tmdb_id: number; media_type: string; type: string | null }> | null }>,
     supabase
       .from("friendships")
       .select("user_id, friend_id")
@@ -100,26 +91,34 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 3. ── Candidats TMDB ──────────────────────────────────────────────────────
-  const [moviesP1, moviesP2, tvP1, tvP2] = await Promise.all([
-    tmdbPage<TMDbCandidateItem>("/movie/popular", 1),
-    tmdbPage<TMDbCandidateItem>("/movie/popular", 2),
-    tmdbPage<TMDbCandidateItem>("/tv/popular", 1),
-    tmdbPage<TMDbCandidateItem>("/tv/popular", 2),
+  // Top 10 liked items — base du calcul de similarité (interactions explicites)
+  const likedItems: LikedItemRef[] = (interacted ?? [])
+    .filter((r) => r.type === "like")
+    .slice(0, 10)
+    .map((r) => ({ tmdb_id: r.tmdb_id, media_type: r.media_type as "movie" | "tv" }));
+
+  // 3. ── Candidats TMDB diversifiés + similarityMap (en parallèle) ──────────
+  // Sources : popular, top_rated, trending (×2 médias) + genre-based discover
+  const [{ movies: allMovies, tv: allTV }, similarityMap] = await Promise.all([
+    fetchCandidates(hasProfile ? profile : null),
+    loadSimilarityMap(likedItems),
   ]);
 
-  const movieCandidates = [...moviesP1, ...moviesP2].filter(
-    (m) => !excludedSet.has(`${m.id}-movie`)
-  );
-  const tvCandidates = [...tvP1, ...tvP2].filter(
-    (m) => !excludedSet.has(`${m.id}-tv`)
-  );
+  // Fire-and-forget : refresh similar_items pour les liked items périmés
+  // Batch de 3 pour respecter les rate limits TMDB (40 req/s)
+  for (let i = 0; i < likedItems.length; i += 3) {
+    const batch = likedItems.slice(i, i + 3);
+    void Promise.all(batch.map((item) => fetchAndCacheSimilarItems(item.tmdb_id, item.media_type)));
+  }
 
-  // 4. ── Features DB ─────────────────────────────────────────────────────────
+  const movieCandidates = allMovies.filter((m) => !excludedSet.has(`${m.id}-movie`));
+  const tvCandidates    = allTV.filter((m) => !excludedSet.has(`${m.id}-tv`));
+
+  // 4. ── Features DB — chargement initial ───────────────────────────────────
   const allIds = [
     ...movieCandidates.map((m) => m.id),
     ...tvCandidates.map((m) => m.id),
-  ].slice(0, 160);
+  ].slice(0, 200);
 
   const { data: featuresRows } = await supabase
     .from("media_features")
@@ -131,14 +130,33 @@ export async function GET(request: NextRequest) {
     featureMap.set(`${f.tmdb_id}-${f.media_type}`, f);
   }
 
+  // 4b. ── Pre-fetch features manquantes (inline, max 20, concurrent 5) ──────
+  const allCandidatesMeta = [
+    ...movieCandidates.map((m) => ({ id: m.id, mediaType: "movie" as const })),
+    ...tvCandidates.map((m) => ({ id: m.id, mediaType: "tv" as const })),
+  ];
+
+  await preFetchMissingFeatures(allCandidatesMeta, featureMap);
+
+  // 4c. ── Recharge les features après pre-fetch ─────────────────────────────
+  const { data: featuresRowsUpdated } = await supabase
+    .from("media_features")
+    .select("tmdb_id, media_type, genre_ids, keyword_ids, cast_ids, director_ids")
+    .in("tmdb_id", allIds) as { data: CandidateFeatures[] | null };
+
+  const featureMapFinal = new Map<string, CandidateFeatures>();
+  for (const f of featuresRowsUpdated ?? []) {
+    featureMapFinal.set(`${f.tmdb_id}-${f.media_type}`, f);
+  }
+
   // 5. ── Scoring ─────────────────────────────────────────────────────────────
   const scored: ScoredItem[] = [];
 
   for (const m of movieCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMap.get(`${m.id}-movie`), "movie", friendLikeMap, friendCount));
+    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-movie`), "movie", friendLikeMap, friendCount, similarityMap, likedItems, featureMapFinal));
   }
   for (const m of tvCandidates) {
-    scored.push(scoreItem(hasProfile ? profile : null, m, featureMap.get(`${m.id}-tv`), "tv", friendLikeMap, friendCount));
+    scored.push(scoreItem(hasProfile ? profile : null, m, featureMapFinal.get(`${m.id}-tv`), "tv", friendLikeMap, friendCount, similarityMap, likedItems, featureMapFinal));
   }
 
   scored.sort((a, b) => b.score - a.score);

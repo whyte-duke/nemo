@@ -13,7 +13,9 @@
 
 import "server-only";
 import { computeTasteScore } from "./taste-profile";
+import { getSimilarityScore } from "./similarity";
 import type { TasteProfile } from "./taste-profile";
+import type { LikedItemRef, SimilarityMap } from "./similarity";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +52,8 @@ export interface ScoredItem {
   reason_type: ReasonType;
   /** Contexte enrichi Spotify-style : "genre:28", "social:3" */
   reason_detail?: string;
+  /** Score de similarité contenu [0,1] — calculé en Phase 03, pondéré en Phase 04 */
+  similarity_score: number;
   // ── Champs d'affichage ──
   title?: string;
   name?: string;
@@ -73,10 +77,13 @@ export interface ScoredItem {
  *   0.20 × social_score      (amis qui ont liké ce titre)
  *   0.10 × trending_score    (popularité TMDB normalisée)
  *   0.05 × quality_score     (vote_average pondéré par vote_count)
- *   (+ 0.20 similarity_score réservé Phase 6)
+ *   (+ 0.20 similarity_score réservé Phase 4)
  *
- * @param friendLikes  Map `tmdb_id-media_type` → nombre d'amis ayant liké
- * @param friendCount  Nombre total d'amis (pour normaliser le score social)
+ * @param friendLikes    Map `tmdb_id-media_type` → nombre d'amis ayant liké
+ * @param friendCount    Nombre total d'amis (pour normaliser le score social)
+ * @param similarityMap  Map `tmdb_id-media_type` → score TMDB /similar (optionnel)
+ * @param likedItems     Top 10 liked items pour le Jaccard fallback (optionnel)
+ * @param featuresMap    Map `tmdb_id-media_type` → features pour Jaccard (optionnel)
  */
 export function scoreItem(
   profile: TasteProfile | null,
@@ -84,7 +91,10 @@ export function scoreItem(
   features: CandidateFeatures | undefined,
   mediaType: "movie" | "tv",
   friendLikes?: Map<string, number>,
-  friendCount?: number
+  friendCount?: number,
+  similarityMap?: SimilarityMap,
+  likedItems?: LikedItemRef[],
+  featuresMap?: Map<string, CandidateFeatures>
 ): ScoredItem {
   // Trending : popularité TMDB (max ~1000 pour les blockbusters)
   const trendingScore = Math.min(item.popularity / 500, 1.0);
@@ -101,6 +111,17 @@ export function scoreItem(
     friendCount && friendCount > 0
       ? Math.min(likeCount / Math.max(friendCount, 3), 1.0)
       : 0;
+
+  // Similarity : calculé mais poids = 0 jusqu'à Phase 04 (réservé)
+  const similarityScore = similarityMap !== undefined
+    ? getSimilarityScore(
+        item.id,
+        mediaType,
+        likedItems ?? [],
+        featuresMap ?? new Map(),
+        similarityMap
+      )
+    : 0;
 
   let reason_type: ReasonType = "trending";
   let reason_detail: string | undefined;
@@ -139,7 +160,7 @@ export function scoreItem(
       reason_type = "quality";
     }
 
-    return buildItem(item, mediaType, score, reason_type, reason_detail);
+    return buildItem(item, mediaType, score, reason_type, reason_detail, similarityScore);
   }
 
   // Pas de profil ou features manquantes → fallback trending + quality + social
@@ -155,7 +176,7 @@ export function scoreItem(
     reason_detail = `social:${likeCount}`;
   }
 
-  return buildItem(item, mediaType, score, reason_type, reason_detail);
+  return buildItem(item, mediaType, score, reason_type, reason_detail, similarityScore);
 }
 
 function buildItem(
@@ -163,7 +184,8 @@ function buildItem(
   mediaType: "movie" | "tv",
   score: number,
   reason_type: ReasonType,
-  reason_detail?: string
+  reason_detail?: string,
+  similarity_score = 0
 ): ScoredItem {
   return {
     tmdb_id: item.id,
@@ -171,6 +193,7 @@ function buildItem(
     score,
     reason_type,
     reason_detail,
+    similarity_score,
     title: item.title,
     name: item.name,
     poster_path: item.poster_path,
