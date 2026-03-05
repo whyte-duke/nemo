@@ -21,8 +21,9 @@ import { MediaRow } from "@/components/media/MediaRow";
 import { DetailModal } from "@/components/media/DetailModal";
 import { MovieWatchModal } from "@/components/player/MovieWatchModal";
 import { useMovieDetail, useTVShowDetail } from "@/hooks/use-tmdb";
-import { TMDB_GENRE_NAMES } from "@/lib/tmdb/genres";
 import type { ScoredItem } from "@/lib/recommendations/scorer";
+import { buildReasonGroups } from "@/lib/recommendations/pour-vous-helpers";
+import type { ReasonGroup } from "@/lib/recommendations/pour-vous-helpers";
 import type { TMDbMovieDetail, TMDbTVShowDetail } from "@/types/tmdb";
 
 interface RecommendationsResponse {
@@ -58,89 +59,6 @@ const REASON_CONFIG = {
   quality:     { icon: Star,       color: "text-amber-400"   },
 
 } as const;
-
-// ─── Groupage par raison ──────────────────────────────────────────────────────
-
-type ReasonGroup = {
-  reason: keyof typeof REASON_CONFIG;
-  /** Pour reason_type = "similarity" uniquement */
-  sourceTitle?: string;
-  /** Label affiché dans le sous-titre de section */
-  label: string;
-  items: ScoredItem[];
-};
-
-/**
- * Groupe les items par reason_type.
- * Pour "similarity", crée un groupe par sourceTitle distinct (max 2).
- * Retourne les groupes dans l'ordre d'affichage voulu.
- * Données dérivées calculées pendant le render — pas de useEffect.
- */
-function buildReasonGroups(items: ScoredItem[]): ReasonGroup[] {
-  const groups: ReasonGroup[] = [];
-
-  // 1. Sections similarity — une par sourceTitle (max 2)
-  const similarityItems = items.filter((i) => i.reason_type === "similarity");
-  const sourceTitlesMap = new Map<string, ScoredItem[]>();
-  for (const item of similarityItems) {
-    const sourceTitle = item.reason_detail?.startsWith("similarity:")
-      ? item.reason_detail.slice(11)
-      : "un titre que vous aimez";
-    if (!sourceTitlesMap.has(sourceTitle)) sourceTitlesMap.set(sourceTitle, []);
-    sourceTitlesMap.get(sourceTitle)!.push(item);
-  }
-  let simCount = 0;
-  for (const [sourceTitle, simItems] of sourceTitlesMap) {
-    if (simCount >= 2) break;
-    groups.push({
-      reason: "similarity",
-      sourceTitle,
-      label: `Parce que vous avez regardé ${sourceTitle}`,
-      items: simItems,
-    });
-    simCount++;
-  }
-
-  // 2. Sections standard dans l'ordre voulu
-  const standardReasons = ["taste_match", "social", "quality", "trending"] as const;
-  for (const reason of standardReasons) {
-    const reasonItems = items.filter((i) => i.reason_type === reason);
-    if (reasonItems.length === 0) continue;
-
-    let label: string;
-    if (reason === "taste_match") {
-      const firstDetail = reasonItems[0]?.reason_detail;
-      if (firstDetail?.startsWith("genre:")) {
-        const genreId = Number(firstDetail.slice(6));
-        const genreName = TMDB_GENRE_NAMES[genreId];
-        label = genreName
-          ? `Correspondance avec vos goûts • ${genreName}`
-          : "Correspondance avec vos goûts";
-      } else {
-        label = "Correspondance avec vos goûts";
-      }
-    } else if (reason === "social") {
-      const socialDetail = reasonItems.find((i) =>
-        i.reason_detail?.startsWith("social:")
-      )?.reason_detail;
-      const count = socialDetail ? Number(socialDetail.slice(7)) : 0;
-      label =
-        count > 1
-          ? `${count} amis ont aimé`
-          : count === 1
-            ? "1 ami a aimé"
-            : "Aimé par vos amis";
-    } else if (reason === "quality") {
-      label = "Hautement noté";
-    } else {
-      label = "Populaire en ce moment";
-    }
-
-    groups.push({ reason, label, items: reasonItems });
-  }
-
-  return groups;
-}
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
