@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ArrowRight, Clapperboard, Server, Users } from "lucide-react";
+import { ArrowRight, Clapperboard, Server, Users, Zap } from "lucide-react";
 import type { UserRole } from "@/hooks/use-profile";
 
 interface StepPremiumWelcomeProps {
@@ -41,32 +41,32 @@ const VIP_CONFIG = {
 };
 
 const SOURCES_CONFIG = {
-  badge: "ACCÈS SOURCES",
-  badgeClass: "bg-violet-500/20 text-violet-400 border-violet-500/30",
-  hero: "⚡",
-  title: "Accès Sources activé",
-  subtitle: "Tu es dans la place — streaming haute qualité débloqué.",
+  badge: "ACCÈS AMIS",
+  badgeClass: "bg-nemo-accent/20 text-nemo-accent border-nemo-accent/30",
+  hero: "🎬",
+  title: "Accès Amis exclusif",
+  subtitle: "Tu as été invité par un ami Nemo — bienvenue !",
   features: [
     {
       icon: Clapperboard,
       title: "Tous les films du monde",
-      desc: "Streaming direct, haute qualité",
-      color: "text-violet-400",
-      bg: "bg-violet-500/10",
+      desc: "Streaming direct, sans abonnement supplémentaire",
+      color: "text-nemo-accent",
+      bg: "bg-nemo-accent/10",
+    },
+    {
+      icon: Zap,
+      title: "Streaming 4K",
+      desc: "Films en haute définition, direct depuis nos serveurs",
+      color: "text-nemo-accent",
+      bg: "bg-nemo-accent/10",
     },
     {
       icon: Users,
       title: "Partage avec tes amis",
-      desc: "Invite tes potes, c'est gratuit pour eux",
-      color: "text-violet-400",
-      bg: "bg-violet-500/10",
-    },
-    {
-      icon: Clapperboard,
-      title: "Communauté",
-      desc: "Listes, activité, avis — tout est là",
-      color: "text-violet-400",
-      bg: "bg-violet-500/10",
+      desc: "Invite qui tu veux, c'est gratuit pour eux",
+      color: "text-nemo-accent",
+      bg: "bg-nemo-accent/10",
     },
   ],
 };

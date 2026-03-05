@@ -21,9 +21,9 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Rediriger directement vers /onboarding après reset
+  // Rediriger vers /onboarding?reset=1 pour que le client vide le localStorage
   const response = NextResponse.redirect(
-    new URL("/onboarding", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000")
+    new URL("/onboarding?reset=1", process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000")
   );
   response.cookies.delete("nemo_onboarding_done");
   return response;
