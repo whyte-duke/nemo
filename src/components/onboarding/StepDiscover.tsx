@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { SwipeStack } from "@/components/discover/SwipeStack";
+import { DiscoverOnboarding } from "@/components/discover/DiscoverOnboarding";
 import { useSwipeSession, type SwipeAction } from "@/hooks/use-swipe-session";
 
 const ALL_SWIPE_TYPES: SwipeAction[] = ["like", "dislike", "list", "pas_vu"];
@@ -18,10 +19,16 @@ export default function StepDiscover({ onNext }: StepDiscoverProps) {
 
   const seenActionsRef = useRef(new Set<SwipeAction>());
   const [navigating, setNavigating] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(true);
 
   useEffect(() => {
     void loadCards();
   }, [loadCards]);
+
+  const handleTutorialComplete = () => {
+    localStorage.setItem("nemo_discover_onboarded", "1");
+    setShowTutorial(false);
+  };
 
   const handleSwipe = async (action: SwipeAction) => {
     await swipe(action);
@@ -33,6 +40,18 @@ export default function StepDiscover({ onNext }: StepDiscoverProps) {
       onNext();
     }
   };
+
+  if (showTutorial) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <DiscoverOnboarding embedded onComplete={handleTutorialComplete} />
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

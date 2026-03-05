@@ -25,6 +25,7 @@ type ServiceState = "idle" | "connecting" | "connected" | "importing" | "importe
 interface StepImportProps {
   onNext: (results: ImportResults) => void;
   initialResults: ImportResults;
+  role?: string;
 }
 
 // ── Parseur CSV Netflix ──────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ function parseNetflixCSV(text: string): { title: string; date: string }[] {
 
 // ── Composant principal ──────────────────────────────────────────────────────
 
-export default function StepImport({ onNext, initialResults }: StepImportProps) {
+export default function StepImport({ onNext, initialResults, role }: StepImportProps) {
   const searchParams = useSearchParams();
 
   const [letterboxdState, setLetterboxdState] = useState<ServiceState>("idle");
@@ -478,23 +479,25 @@ export default function StepImport({ onNext, initialResults }: StepImportProps) 
           disabled={!isTraktAvailable}
         />
 
-        {/* ── Jellyfin ─────────────────────────────────────────────────────── */}
-        <ServiceRow
-          icon={<JellyfinIcon className="size-5" style={{ color: "#00A4DC" }} />}
-          name="Jellyfin"
-          description={
-            jellyfinHasAccount === null
-              ? "Chargement…"
-              : jellyfinHasAccount
-              ? "Importez l'historique depuis votre serveur Jellyfin"
-              : "Connectez d'abord votre compte dans les Paramètres"
-          }
-          state={jellyfinHasAccount === false ? "idle" : jellyfinState}
-          importedCount={jellyfinCount}
-          actionLabel="Importer"
-          onAction={jellyfinHasAccount ? () => void importJellyfin() : undefined}
-          disabled={!jellyfinHasAccount}
-        />
+        {/* ── Jellyfin (VIP / admin only) ────────────────────────────────── */}
+        {role !== "sources" && (
+          <ServiceRow
+            icon={<JellyfinIcon className="size-5" style={{ color: "#00A4DC" }} />}
+            name="Jellyfin"
+            description={
+              jellyfinHasAccount === null
+                ? "Chargement…"
+                : jellyfinHasAccount
+                ? "Importez l'historique depuis votre serveur Jellyfin"
+                : "Connectez d'abord votre compte dans les Paramètres"
+            }
+            state={jellyfinHasAccount === false ? "idle" : jellyfinState}
+            importedCount={jellyfinCount}
+            actionLabel="Importer"
+            onAction={jellyfinHasAccount ? () => void importJellyfin() : undefined}
+            disabled={!jellyfinHasAccount}
+          />
+        )}
       </div>
 
       {/* Note import en cours */}
