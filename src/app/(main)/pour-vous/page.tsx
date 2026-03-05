@@ -1,22 +1,27 @@
 /**
  * /pour-vous — Page de recommandations personnalisées
  *
- * Affiche la liste complète des recommandations groupées par raison :
- *   - "Correspondant à vos goûts" (taste_match)
- *   - "Tendances" (trending)
- *   - "Très bien notés" (quality)
+ * Affiche les recommandations groupées en sections séquentielles :
+ *   - "Parce que vous avez regardé X" (similarity) — max 2 par type de média
+ *   - "Correspondance avec vos goûts • [Genre]" (taste_match)
+ *   - "[N] amis ont aimé" (social)
+ *   - "Hautement noté" (quality)
+ *   - "Populaire en ce moment" (trending)
+ *
+ * Films d'abord, puis Séries.
  */
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Sparkles, TrendingUp, Star, Users, Loader2, Film } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Sparkles, TrendingUp, Star, Users, Link2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useCallback } from "react";
 import { MediaRow } from "@/components/media/MediaRow";
 import { DetailModal } from "@/components/media/DetailModal";
 import { MovieWatchModal } from "@/components/player/MovieWatchModal";
 import { useMovieDetail, useTVShowDetail } from "@/hooks/use-tmdb";
+import { TMDB_GENRE_NAMES } from "@/lib/tmdb/genres";
 import type { ScoredItem } from "@/lib/recommendations/scorer";
 import type { TMDbMovieDetail, TMDbTVShowDetail } from "@/types/tmdb";
 
@@ -43,19 +48,105 @@ function toMediaItem(item: ScoredItem) {
   };
 }
 
-// ─── Icônes et labels par raison ─────────────────────────────────────────────
+// ─── Icônes par raison ────────────────────────────────────────────────────────
 
 const REASON_CONFIG = {
-  similarity:  { icon: Film,       label: "Similaire à vos films regardés", color: "text-purple-400" },
-  taste_match: { icon: Sparkles,   label: "Correspondant à vos goûts",      color: "text-indigo-400" },
-  social:      { icon: Users,      label: "Aimé par vos amis",              color: "text-green-400"  },
-  trending:    { icon: TrendingUp, label: "Tendances",                       color: "text-blue-400"   },
-  quality:     { icon: Star,       label: "Très bien notés",                 color: "text-amber-400"  },
+  similarity:  { icon: Link2,      color: "text-purple-400"  },
+  taste_match: { icon: Sparkles,   color: "text-indigo-400"  },
+  social:      { icon: Users,      color: "text-green-400"   },
+  trending:    { icon: TrendingUp, color: "text-blue-400"    },
+  quality:     { icon: Star,       color: "text-amber-400"   },
+
 } as const;
+
+// ─── Groupage par raison ──────────────────────────────────────────────────────
+
+type ReasonGroup = {
+  reason: keyof typeof REASON_CONFIG;
+  /** Pour reason_type = "similarity" uniquement */
+  sourceTitle?: string;
+  /** Label affiché dans le sous-titre de section */
+  label: string;
+  items: ScoredItem[];
+};
+
+/**
+ * Groupe les items par reason_type.
+ * Pour "similarity", crée un groupe par sourceTitle distinct (max 2).
+ * Retourne les groupes dans l'ordre d'affichage voulu.
+ * Données dérivées calculées pendant le render — pas de useEffect.
+ */
+function buildReasonGroups(items: ScoredItem[]): ReasonGroup[] {
+  const groups: ReasonGroup[] = [];
+
+  // 1. Sections similarity — une par sourceTitle (max 2)
+  const similarityItems = items.filter((i) => i.reason_type === "similarity");
+  const sourceTitlesMap = new Map<string, ScoredItem[]>();
+  for (const item of similarityItems) {
+    const sourceTitle = item.reason_detail?.startsWith("similarity:")
+      ? item.reason_detail.slice(11)
+      : "un titre que vous aimez";
+    if (!sourceTitlesMap.has(sourceTitle)) sourceTitlesMap.set(sourceTitle, []);
+    sourceTitlesMap.get(sourceTitle)!.push(item);
+  }
+  let simCount = 0;
+  for (const [sourceTitle, simItems] of sourceTitlesMap) {
+    if (simCount >= 2) break;
+    groups.push({
+      reason: "similarity",
+      sourceTitle,
+      label: `Parce que vous avez regardé ${sourceTitle}`,
+      items: simItems,
+    });
+    simCount++;
+  }
+
+  // 2. Sections standard dans l'ordre voulu
+  const standardReasons = ["taste_match", "social", "quality", "trending"] as const;
+  for (const reason of standardReasons) {
+    const reasonItems = items.filter((i) => i.reason_type === reason);
+    if (reasonItems.length === 0) continue;
+
+    let label: string;
+    if (reason === "taste_match") {
+      const firstDetail = reasonItems[0]?.reason_detail;
+      if (firstDetail?.startsWith("genre:")) {
+        const genreId = Number(firstDetail.slice(6));
+        const genreName = TMDB_GENRE_NAMES[genreId];
+        label = genreName
+          ? `Correspondance avec vos goûts • ${genreName}`
+          : "Correspondance avec vos goûts";
+      } else {
+        label = "Correspondance avec vos goûts";
+      }
+    } else if (reason === "social") {
+      const socialDetail = reasonItems.find((i) =>
+        i.reason_detail?.startsWith("social:")
+      )?.reason_detail;
+      const count = socialDetail ? Number(socialDetail.slice(7)) : 0;
+      label =
+        count > 1
+          ? `${count} amis ont aimé`
+          : count === 1
+            ? "1 ami a aimé"
+            : "Aimé par vos amis";
+    } else if (reason === "quality") {
+      label = "Hautement noté";
+    } else {
+      label = "Populaire en ce moment";
+    }
+
+    groups.push({ reason, label, items: reasonItems });
+  }
+
+  return groups;
+}
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export default function PourVousPage() {
+  const queryClient = useQueryClient();
+
   const { data, isLoading } = useQuery<RecommendationsResponse>({
     queryKey: ["recommendations", "full"],
     queryFn: async () => {
@@ -81,6 +172,25 @@ export default function PourVousPage() {
     if (type === "movie") setWatchMovieId(item.id);
   }, []);
 
+  const handleNotInterested = useCallback(
+    async (item: { id: number }, type: "movie" | "tv") => {
+      // Fire-and-forget — l'UI se met à jour via UserInteractionsContext
+      void fetch("/api/interactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tmdbId: item.id,
+          mediaType: type,
+          type: null,
+          notInterested: true,
+        }),
+      }).then(() => {
+        void queryClient.invalidateQueries({ queryKey: ["recommendations", "full"] });
+      });
+    },
+    [queryClient]
+  );
+
   // ── Pas de profil ─────────────────────────────────────────────────────────
   if (!isLoading && data && !data.hasProfile) {
     return (
@@ -94,6 +204,7 @@ export default function PourVousPage() {
         </div>
         <Link
           href="/decouvrir"
+          data-test="start-discovering-link"
           className="rounded-2xl px-6 py-3 text-sm font-semibold bg-indigo-500 text-white hover:bg-indigo-400 transition-colors"
         >
           Commencer à découvrir
@@ -102,25 +213,82 @@ export default function PourVousPage() {
     );
   }
 
-  // ── Chargement ─────────────────────────────────────────────────────────────
+  // ── Chargement skeleton ────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="size-8 text-white/40 animate-spin" />
+      <div className="pt-6 pb-12 space-y-10" data-test="pour-vous-page-loading">
+        {/* En-tête */}
+        <div className="px-4 sm:px-6 flex items-center gap-3">
+          <Sparkles className="size-5 text-indigo-400" />
+          <h1 className="text-white text-xl font-bold">Pour vous</h1>
+        </div>
+        {/* 3 rows skeleton */}
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-3" aria-label="chargement">
+            <div className="px-4 sm:px-6">
+              <div className="h-4 w-48 skeleton rounded-full" />
+            </div>
+            <MediaRow
+              title=""
+              items={[]}
+              mediaType="movie"
+              isLoading={true}
+            />
+          </div>
+        ))}
       </div>
     );
   }
 
+  // ── Données disponibles ───────────────────────────────────────────────────
   const items = data?.items ?? [];
 
-  // Grouper par reason_type (Phase 04 : ajout de "similarity")
-  const groups = (["similarity", "taste_match", "social", "trending", "quality"] as const).map((reason) => ({
-    reason,
-    items: items.filter((i) => i.reason_type === reason),
-  })).filter((g) => g.items.length > 0);
+  // Dérivé pendant le render — pas de useEffect
+  const movieItems  = items.filter((i) => i.media_type === "movie");
+  const tvItems     = items.filter((i) => i.media_type === "tv");
+  const movieGroups = buildReasonGroups(movieItems);
+  const tvGroups    = buildReasonGroups(tvItems);
+
+  // ── Rendu d'un groupe de section ──────────────────────────────────────────
+  function renderGroup(group: ReasonGroup, keyPrefix: string) {
+    const config = REASON_CONFIG[group.reason];
+    const Icon = config.icon;
+    const groupMediaType: "movie" | "tv" = keyPrefix === "movie" ? "movie" : "tv";
+
+    return (
+      <div
+        key={`${keyPrefix}-${group.reason}-${group.sourceTitle ?? ""}`}
+        className="space-y-3"
+      >
+        <div className="px-4 sm:px-6 flex items-center gap-2">
+          <Icon className={`size-4 ${config.color}`} />
+          <span className="text-white/60 text-sm font-medium">{group.label}</span>
+        </div>
+        <MediaRow
+          title=""
+          items={group.items.map(toMediaItem) as unknown as Parameters<typeof MediaRow>[0]["items"]}
+          mediaType={groupMediaType}
+          onPlay={(item) => {
+            const scored = group.items.find((s) => s.tmdb_id === item.id);
+            if (scored) handlePlay({ id: item.id }, scored.media_type);
+          }}
+          onMoreInfo={(item) => {
+            const scored = group.items.find((s) => s.tmdb_id === item.id);
+            if (scored) handleMoreInfo({ id: item.id }, scored.media_type);
+          }}
+          onNotInterested={(item) => {
+            const scored = group.items.find((s) => s.tmdb_id === item.id);
+            if (scored) void handleNotInterested({ id: item.id }, scored.media_type);
+          }}
+          hideIfSeen={true}
+        />
+      </div>
+    );
+  }
+
 
   return (
-    <div className="pt-6 pb-12 space-y-10">
+    <div className="pt-6 pb-12 space-y-10" data-test="pour-vous-page">
       {/* En-tête */}
       <div className="px-4 sm:px-6 flex items-center gap-3">
         <Sparkles className="size-5 text-indigo-400" />
@@ -128,40 +296,35 @@ export default function PourVousPage() {
         <span className="text-white/30 text-sm">— {items.length} titres</span>
       </div>
 
-      {/* Groupes */}
-      {groups.map(({ reason, items: groupItems }) => {
-        const config = REASON_CONFIG[reason];
-        const Icon = config.icon;
-
-        return (
-          <div key={reason} className="space-y-3">
-            {/* Sous-titre du groupe */}
-            <div className="px-4 sm:px-6 flex items-center gap-2">
-              <Icon className={`size-4 ${config.color}`} />
-              <span className="text-white/60 text-sm font-medium">{config.label}</span>
-            </div>
-
-            <MediaRow
-              title=""
-              items={groupItems.map(toMediaItem) as unknown as Parameters<typeof MediaRow>[0]["items"]}
-              mediaType="movie"
-              onPlay={(item) => {
-                const scored = groupItems.find((s) => s.tmdb_id === item.id);
-                if (scored) handlePlay({ id: item.id }, scored.media_type);
-              }}
-              onMoreInfo={(item) => {
-                const scored = groupItems.find((s) => s.tmdb_id === item.id);
-                if (scored) handleMoreInfo({ id: item.id }, scored.media_type);
-              }}
-            />
+      {/* Section Films */}
+      {movieGroups.length > 0 && (
+        <div className="space-y-8">
+          <div className="px-4 sm:px-6">
+            <h2 className="text-white/40 text-xs font-semibold uppercase tracking-widest">
+              Films
+            </h2>
           </div>
-        );
-      })}
+          {movieGroups.map((g) => renderGroup(g, "movie"))}
+        </div>
+      )}
 
-      {/* Bouton pour enrichir le profil */}
+      {/* Section Séries */}
+      {tvGroups.length > 0 && (
+        <div className="space-y-8">
+          <div className="px-4 sm:px-6">
+            <h2 className="text-white/40 text-xs font-semibold uppercase tracking-widest">
+              Séries
+            </h2>
+          </div>
+          {tvGroups.map((g) => renderGroup(g, "tv"))}
+        </div>
+      )}
+
+      {/* Lien pour enrichir le profil */}
       <div className="px-4 sm:px-6">
         <Link
           href="/decouvrir"
+          data-test="swipe-more-link"
           className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors"
         >
           <Sparkles className="size-4" />
