@@ -73,7 +73,8 @@ export class NemoMediaStorage implements MediaStorage {
 
   async getMuted(): Promise<boolean | null> {
     const v = this._get("muted");
-    return v === null ? null : v === "true";
+    if (v === null) return false; // Default to unmuted — prevents accumulation of muted state
+    return v === "true";
   }
 
   async setMuted(muted: boolean): Promise<void> {

@@ -17,7 +17,7 @@ import {
   DefaultVideoLayout,
   defaultLayoutIcons,
 } from "@vidstack/react/player/layouts/default";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { NemoMediaStorage } from "@/lib/player/media-storage";
@@ -54,6 +54,8 @@ export interface NemoPlayerProps {
   subtitles?: SubtitleTrack[];
   /** Callback déclenché quand l'utilisateur clique "Épisode suivant" ou après le countdown */
   onNextEpisode?: () => void;
+  /** Callback pour changer de source (rouvre le StreamModal) */
+  onChangeSource?: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -211,6 +213,7 @@ export function NemoPlayer({
   episodeNumber,
   subtitles = [],
   onNextEpisode,
+  onChangeSource,
 }: NemoPlayerProps) {
   const playerRef = useRef<MediaPlayerInstance>(null);
 
@@ -247,12 +250,29 @@ export function NemoPlayer({
             // Show on touch devices (no hover)
             "[@media(hover:none)]:opacity-100"
           )}
-          onMouseEnter={() => {
-            // Reveal back button on hover — Vidstack manages its own controls visibility
-          }}
         >
           <ArrowLeft className="size-4" />
           <span className="hidden sm:inline">Retour</span>
+        </button>
+      )}
+
+      {/* ── Change source button overlay ── */}
+      {onChangeSource && (
+        <button
+          onClick={onChangeSource}
+          aria-label="Changer de source"
+          className={cn(
+            "absolute top-4 right-4 z-50",
+            "flex items-center gap-2 px-3 py-2 rounded-xl",
+            "bg-black/50 backdrop-blur-sm border border-white/10",
+            "text-white/80 hover:text-white hover:bg-black/70 transition-all",
+            "text-sm font-medium",
+            "opacity-0 hover:opacity-100 focus:opacity-100",
+            "[@media(hover:none)]:opacity-100"
+          )}
+        >
+          <RefreshCw className="size-4" />
+          <span className="hidden sm:inline">Changer de source</span>
         </button>
       )}
 
