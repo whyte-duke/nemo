@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2 } from "lucide-react";
 import { StreamModal } from "@/components/player/StreamModal";
 import { NemoPlayer } from "@/components/player/NemoPlayer";
-import { saveLastStream, getLastStream } from "@/lib/player/last-stream";
+import { saveLastStream } from "@/lib/player/last-stream";
 import { useMovieDetail } from "@/hooks/use-tmdb";
 import { useStream } from "@/providers/stream-provider";
 import { useItemProgress } from "@/hooks/use-watch-history";
@@ -20,9 +20,8 @@ interface MovieWatchModalProps {
 }
 
 /**
- * Ouvre le modal "Comment regarder ?" (Jellyfin, streaming, sources torrent)
- * à partir d'un seul TMDB movie id. Charge le détail, la dispo Jellyfin et
- * les options de streaming, puis affiche le même flux que la page détail film.
+ * Ouvre le modal "Comment regarder ?" à partir d'un TMDB movie id.
+ * Charge le détail du film, résout les streams, affiche StreamModal.
  */
 export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }: MovieWatchModalProps) {
   const { data: movie, isLoading: movieLoading } = useMovieDetail(open && movieId > 0 ? movieId : 0);
@@ -38,18 +37,6 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }
     : 0;
 
   const [activeStream, setActiveStream] = useState<{ url: string; title: string; tmdbId?: number; startTime?: number } | null>(null);
-
-  // Resume direct — skip StreamModal if user has progress and a known last source
-  useEffect(() => {
-    if (!open) return;
-    const hasProgress = historyEntry && historyEntry.progress > 5;
-    const lastUrl = hasProgress ? getLastStream(movieId, "movie") : null;
-    if (lastUrl && movie) {
-      onClose();
-      setActiveStream({ url: lastUrl, title: movie.title ?? "", tmdbId: movie.id, startTime: resumeTime });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, movie]);
 
   useEffect(() => {
     if (open && movie?.imdb_id) {
@@ -71,7 +58,7 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }
           mediaType="movie"
           startTime={activeStream.startTime}
           onBack={() => setActiveStream(null)}
-          onChangeSource={() => { setActiveStream(null); }}
+          onChangeSource={() => setActiveStream(null)}
           className="w-full h-full"
         />
       </div>
@@ -110,8 +97,8 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }
       tmdbId={movie.id}
       mediaType="movie"
       onSelectStream={(stream) => {
-        onClose();
         saveLastStream(movie.id, "movie", stream.url);
+        onClose();
         setActiveStream({ url: stream.url, title, tmdbId: movie.id, startTime: resumeTime });
       }}
       onDownloadToJellyfin={onDownloadToJellyfin}
