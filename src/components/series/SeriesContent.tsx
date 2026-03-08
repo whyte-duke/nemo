@@ -7,7 +7,7 @@ import { HeroCinematic } from "@/components/hero/HeroCinematic";
 import { MediaRow } from "@/components/media/MediaRow";
 import { DetailModal } from "@/components/media/DetailModal";
 import { StreamModal } from "@/components/player/StreamModal";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import {
   useTrending,
   useTopRatedTV,
@@ -190,7 +190,7 @@ export function SeriesContent() {
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <VideoPlayer url={activeStream} title={activeTitle} onBack={() => setActiveStream(null)} className="w-full h-full" />
+        <NemoPlayer url={activeStream} title={activeTitle} onBack={() => setActiveStream(null)} className="w-full h-full" />
       </div>
     );
   }

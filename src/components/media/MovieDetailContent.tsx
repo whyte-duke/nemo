@@ -10,7 +10,7 @@ import { cn, formatRuntime, formatYear } from "@/lib/utils";
 import { tmdbImage, getTrailerKey } from "@/lib/tmdb/client";
 import { MediaRow } from "./MediaRow";
 import { WatchModal } from "@/components/player/WatchModal";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
 import { useItemProgress, useMarkAsWatched, isMovieWatched } from "@/hooks/use-watch-history";
 import { useAuth } from "@/hooks/use-auth";
@@ -71,7 +71,7 @@ export function MovieDetailContent({ movie }: Props) {
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <VideoPlayer
+        <NemoPlayer
           url={activeStream}
           tmdbId={movie.id}
           mediaType="movie"

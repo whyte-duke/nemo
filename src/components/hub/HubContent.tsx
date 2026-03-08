@@ -5,7 +5,7 @@ import { useInfiniteMoviesByProvider } from "@/hooks/use-tmdb";
 import { MediaCard } from "@/components/media/MediaCard";
 import { DetailModal } from "@/components/media/DetailModal";
 import { MovieWatchModal } from "@/components/player/MovieWatchModal";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { ProviderLogo } from "@/components/ui/ProviderLogo";
 import { useMovieDetail } from "@/hooks/use-tmdb";
 import { Loader2 } from "lucide-react";
@@ -39,7 +39,7 @@ export function HubContent({ providerId, providerName, providerSlug }: Props) {
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-[var(--z-overlay)] bg-black">
-        <VideoPlayer
+        <NemoPlayer
           url={activeStream}
           title={activeTitle}
           onBack={() => setActiveStream(null)}

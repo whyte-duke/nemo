@@ -33,7 +33,7 @@ import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
 import { useStartDownload } from "@/hooks/use-downloads";
 import { downloadM3U } from "@/lib/m3u";
 import { JellyfinIcon } from "@/components/icons/JellyfinIcon";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import type { ParsedStream, StreamQuality, StreamLanguage } from "@/types/stremio";
 import type { StreamingOption } from "@/app/api/streaming/[imdbId]/route";
 import type { ProbeStream, DownloadMediaInfo } from "@/types/download";
@@ -833,13 +833,12 @@ export function WatchModal({
       {/* ── Lecteur intégré plein écran (portal vers document.body) ──── */}
       {internalStream && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-9999 bg-black">
-          <VideoPlayer
+          <NemoPlayer
             url={internalStream.url}
             title={internalStream.title}
             tmdbId={internalStream.tmdbId}
             mediaType={internalStream.mediaType}
             subtitles={internalStream.subtitles}
-            audioTracks={internalStream.audioTracks}
             startTime={internalStream.startTime}
             onBack={() => {
               setInternalStream(null);

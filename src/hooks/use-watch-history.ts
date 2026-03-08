@@ -35,6 +35,7 @@ export function useUpdateProgress() {
       duration,
       seasonNumber,
       episodeNumber,
+      lastPositionSeconds,
     }: {
       tmdbId: number;
       mediaType: "movie" | "tv";
@@ -42,6 +43,7 @@ export function useUpdateProgress() {
       duration?: number;
       seasonNumber?: number;
       episodeNumber?: number;
+      lastPositionSeconds?: number;
     }) => {
       if (!user) throw new Error("Non connecté");
       const res = await fetch("/api/watch-history", {
@@ -54,6 +56,7 @@ export function useUpdateProgress() {
           duration,
           seasonNumber,
           episodeNumber,
+          lastPositionSeconds,
         }),
       });
       if (!res.ok) throw new Error("Erreur mise à jour");

@@ -505,23 +505,37 @@ export function StreamModal({ open, onClose, onSelectStream, onDownloadToJellyfi
                               exit={{ opacity: 0 }}
                               className="grid gap-2 pt-1"
                             >
-                              {/* VLC — option principale */}
+                              {/* Navigateur — option principale */}
                               <button
                                 type="button"
-                                onClick={handleOpenInVLC}
-                                className="w-full flex items-center gap-4 p-4 rounded-xl border border-[#FF8800]/30 bg-[#FF8800]/5 hover:border-[#FF8800]/50 hover:bg-[#FF8800]/10 transition-all text-left"
+                                onClick={handlePlayInBrowser}
+                                className="w-full flex items-center gap-4 p-4 rounded-xl border border-nemo-accent/30 bg-nemo-accent/5 hover:border-nemo-accent/50 hover:bg-nemo-accent/10 transition-all text-left"
                               >
-                                <div className="shrink-0 flex items-center justify-center size-12 rounded-xl bg-[#FF8800]/20">
-                                  <VLCLogo size={32} />
+                                <div className="shrink-0 flex items-center justify-center size-12 rounded-xl bg-nemo-accent/20">
+                                  <Play className="size-6 text-nemo-accent fill-current" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-semibold text-white">Regarder via VLC</span>
-                                    <span className="px-1.5 py-0.5 rounded-md bg-green-500/15 border border-green-500/25 text-green-400 text-[11px] font-semibold">Gratuit</span>
-                                    <span className="px-1.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/25 text-sky-400 text-[11px] font-semibold">Sans téléchargement</span>
-                                    <span className="px-1.5 py-0.5 rounded-md bg-[#FF8800]/15 border border-[#FF8800]/25 text-[#FF8800] text-[11px] font-semibold">Instantané</span>
+                                    <span className="font-semibold text-white">Lire maintenant</span>
+                                    <span className="px-1.5 py-0.5 rounded-md bg-nemo-accent/15 border border-nemo-accent/25 text-nemo-accent text-[11px] font-semibold">Recommandé</span>
+                                    <span className="px-1.5 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/25 text-sky-400 text-[11px] font-semibold">Reprendre où tu en es</span>
                                   </div>
-                                  <span className="text-white/40 text-sm">Lance le stream directement dans VLC</span>
+                                  <span className="text-white/40 text-sm">Lecture directe dans le navigateur, sans installation</span>
+                                </div>
+                              </button>
+
+                              {/* VLC — option secondaire */}
+                              <button
+                                type="button"
+                                onClick={handleOpenInVLC}
+                                className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/8 hover:border-white/15 hover:bg-white/5 transition-all text-left"
+                              >
+                                <div className="shrink-0 flex items-center justify-center size-12 rounded-xl bg-white/8">
+                                  <VLCLogo size={28} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-medium text-white/80 block">Ouvrir dans VLC</span>
+                                  <span className="text-white/35 text-sm">Lance le stream dans l&apos;application VLC</span>
                                 </div>
                               </button>
 
@@ -543,21 +557,6 @@ export function StreamModal({ open, onClose, onSelectStream, onDownloadToJellyfi
                                   Télécharger hors-ligne
                                 </button>
                               </div>
-
-                              {/* Navigateur */}
-                              <button
-                                type="button"
-                                onClick={handlePlayInBrowser}
-                                className="w-full flex items-center gap-4 p-4 rounded-xl border border-white/10 hover:border-white/20 hover:bg-white/5 transition-all text-left"
-                              >
-                                <div className="shrink-0 flex items-center justify-center size-12 rounded-xl bg-white/10">
-                                  <Play className="size-6 text-nemo-accent fill-current" />
-                                </div>
-                                <div>
-                                  <span className="font-medium text-white block">Lire dans le navigateur</span>
-                                  <span className="text-white/40 text-sm">Lecture directe sur cette page</span>
-                                </div>
-                              </button>
 
                               {/* Jellyfin */}
                               {onDownloadToJellyfin ? (

@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2 } from "lucide-react";
 import { WatchModal } from "@/components/player/WatchModal";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { useMovieDetail } from "@/hooks/use-tmdb";
 import { useJellyfinLibraryCheck } from "@/hooks/use-jellyfin-library";
 import { useStreamingAvailability } from "@/hooks/use-streaming-availability";
 import { useStreamingPreferences, filterStreamingOptions } from "@/hooks/use-streaming-preferences";
 import { useStream } from "@/providers/stream-provider";
+import { useItemProgress } from "@/hooks/use-watch-history";
+import { tmdbImage } from "@/lib/tmdb/client";
 
 interface MovieWatchModalProps {
   open: boolean;
@@ -31,6 +33,15 @@ export function MovieWatchModal({ open, onClose, movieId }: MovieWatchModalProps
     ? filterStreamingOptions(rawStreamingOptions, streamingPrefs)
     : undefined;
   const { resolveStreams } = useStream();
+  const historyEntry = useItemProgress(movieId, "movie");
+
+  // Precise resume position (seconds) from last_position_seconds, fallback to percentage
+  const resumeTime = historyEntry
+    ? ((historyEntry as { last_position_seconds?: number | null }).last_position_seconds ??
+        (historyEntry.progress > 0 && historyEntry.duration
+          ? Math.floor((historyEntry.progress / 100) * historyEntry.duration)
+          : 0))
+    : 0;
 
   const [activeStream, setActiveStream] = useState<{ url: string; title: string; tmdbId?: number; startTime?: number } | null>(null);
 
@@ -46,9 +57,10 @@ export function MovieWatchModal({ open, onClose, movieId }: MovieWatchModalProps
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <VideoPlayer
+        <NemoPlayer
           url={activeStream.url}
           title={activeStream.title}
+          poster={movie?.backdrop_path ? (tmdbImage.backdrop(movie.backdrop_path, "w1280") ?? undefined) : undefined}
           tmdbId={activeStream.tmdbId}
           mediaType="movie"
           startTime={activeStream.startTime}
@@ -103,8 +115,8 @@ export function MovieWatchModal({ open, onClose, movieId }: MovieWatchModalProps
       onPlayStream={(url, t, tmdbId, _mediaType, startTime) => {
         // 1. Fermer le modal en premier
         onClose();
-        // 2. Ouvrir le VideoPlayer — activeStream check est AVANT if (!open) dans ce composant
-        setActiveStream({ url, title: t, tmdbId, startTime });
+        // 2. Ouvrir le NemoPlayer — activeStream check est AVANT if (!open) dans ce composant
+        setActiveStream({ url, title: t, tmdbId, startTime: startTime ?? resumeTime });
       }}
     />
   );

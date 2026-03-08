@@ -6,7 +6,8 @@ import { MediaRow } from "@/components/media/MediaRow";
 import { DetailModal } from "@/components/media/DetailModal";
 import { MovieWatchModal } from "@/components/player/MovieWatchModal";
 import { StreamModal } from "@/components/player/StreamModal";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
+import { ContinueWatchingRow } from "@/components/home/ContinueWatchingRow";
 import {
   useTrending,
   useNowPlayingMovies,
@@ -687,7 +688,7 @@ export function HomeContent() {
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <VideoPlayer url={activeStream} title={activeTitle} onBack={() => setActiveStream(null)} className="w-full h-full" />
+        <NemoPlayer url={activeStream} title={activeTitle} onBack={() => setActiveStream(null)} className="w-full h-full" />
       </div>
     );
   }
@@ -715,8 +716,20 @@ export function HomeContent() {
         </div>
       )}
 
-      {/* ── Reprendre (Jellyfin Continue Watching) ─────────────────── */}
+      {/* ── Continuer à regarder (Nemo — tous les utilisateurs) ────── */}
       <div className="relative z-(--z-above) pt-6">
+        <ContinueWatchingRow
+          onPlayMovie={(tmdbId) => setWatchMovieId(tmdbId)}
+          onPlayTV={(_tmdbId) => {
+            // Pour les séries : ouvre le stream modal (reprise via NemoMediaStorage)
+            setActiveTitle("");
+            setStreamOpen(true);
+          }}
+        />
+      </div>
+
+      {/* ── Reprendre (Jellyfin Continue Watching) ─────────────────── */}
+      <div className="relative z-(--z-above) pt-4">
         <JellyfinContinueRow
           onPlay={(url, title) => {
             setActiveTitle(title);
