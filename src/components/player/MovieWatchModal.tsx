@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2 } from "lucide-react";
 import { StreamModal } from "@/components/player/StreamModal";
 import { NemoPlayer } from "@/components/player/NemoPlayer";
+import { saveLastStream, getLastStream } from "@/lib/player/last-stream";
 import { useMovieDetail } from "@/hooks/use-tmdb";
 import { useStream } from "@/providers/stream-provider";
 import { useItemProgress } from "@/hooks/use-watch-history";
@@ -38,6 +39,18 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }
 
   const [activeStream, setActiveStream] = useState<{ url: string; title: string; tmdbId?: number; startTime?: number } | null>(null);
 
+  // Resume direct — skip StreamModal if user has progress and a known last source
+  useEffect(() => {
+    if (!open) return;
+    const hasProgress = historyEntry && historyEntry.progress > 5;
+    const lastUrl = hasProgress ? getLastStream(movieId, "movie") : null;
+    if (lastUrl && movie) {
+      onClose();
+      setActiveStream({ url: lastUrl, title: movie.title ?? "", tmdbId: movie.id, startTime: resumeTime });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, movie]);
+
   useEffect(() => {
     if (open && movie?.imdb_id) {
       void resolveStreams(movie.imdb_id, "movie");
@@ -58,6 +71,7 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }
           mediaType="movie"
           startTime={activeStream.startTime}
           onBack={() => setActiveStream(null)}
+          onChangeSource={() => { setActiveStream(null); }}
           className="w-full h-full"
         />
       </div>
@@ -97,6 +111,7 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }
       mediaType="movie"
       onSelectStream={(stream) => {
         onClose();
+        saveLastStream(movie.id, "movie", stream.url);
         setActiveStream({ url: stream.url, title, tmdbId: movie.id, startTime: resumeTime });
       }}
       onDownloadToJellyfin={onDownloadToJellyfin}

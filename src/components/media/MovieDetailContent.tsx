@@ -11,6 +11,7 @@ import { tmdbImage, getTrailerKey } from "@/lib/tmdb/client";
 import { MediaRow } from "./MediaRow";
 import { StreamModal } from "@/components/player/StreamModal";
 import { NemoPlayer } from "@/components/player/NemoPlayer";
+import { saveLastStream, getLastStream } from "@/lib/player/last-stream";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
 import { useItemProgress, useMarkAsWatched, isMovieWatched } from "@/hooks/use-watch-history";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,7 +29,7 @@ interface Props {
 
 export function MovieDetailContent({ movie }: Props) {
   const [watchOpen, setWatchOpen] = useState(false);
-  const [activeStream, setActiveStream] = useState<string | null>(null);
+  const [activeStream, setActiveStream] = useState<{ url: string; startTime?: number } | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const { user } = useAuth();
@@ -57,9 +58,22 @@ export function MovieDetailContent({ movie }: Props) {
     }
   }, [movie.imdb_id, resolveStreams]);
 
+  const resumeTime = watchProgress
+    ? ((watchProgress as { last_position_seconds?: number | null }).last_position_seconds ??
+        (watchProgress.progress > 0 && watchProgress.duration
+          ? Math.floor((watchProgress.progress / 100) * watchProgress.duration)
+          : 0))
+    : 0;
+
   const handlePlay = useCallback(() => {
-    setWatchOpen(true);
-  }, []);
+    const hasProgress = watchProgress && watchProgress.progress > 5;
+    const lastUrl = hasProgress ? getLastStream(movie.id, "movie") : null;
+    if (lastUrl) {
+      setActiveStream({ url: lastUrl, startTime: resumeTime });
+    } else {
+      setWatchOpen(true);
+    }
+  }, [movie.id, watchProgress, resumeTime]);
 
   const backdropPath =
     movie.images.backdrops.find((b) => !b.iso_639_1)?.file_path ?? movie.backdrop_path;
@@ -72,11 +86,13 @@ export function MovieDetailContent({ movie }: Props) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
         <NemoPlayer
-          url={activeStream}
+          url={activeStream.url}
           tmdbId={movie.id}
           mediaType="movie"
           title={movie.title}
+          startTime={activeStream.startTime}
           onBack={() => setActiveStream(null)}
+          onChangeSource={() => { setActiveStream(null); setWatchOpen(true); }}
           className="w-full h-full"
         />
       </div>
@@ -456,8 +472,9 @@ export function MovieDetailContent({ movie }: Props) {
         tmdbId={movie.id}
         mediaType="movie"
         onSelectStream={(stream) => {
+          saveLastStream(movie.id, "movie", stream.url);
           setWatchOpen(false);
-          setActiveStream(stream.url);
+          setActiveStream({ url: stream.url, startTime: resumeTime });
         }}
       />
     </article>
