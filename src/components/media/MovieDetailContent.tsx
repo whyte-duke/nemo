@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn, formatRuntime, formatYear } from "@/lib/utils";
 import { tmdbImage, getTrailerKey } from "@/lib/tmdb/client";
 import { MediaRow } from "./MediaRow";
-import { WatchModal } from "@/components/player/WatchModal";
+import { StreamModal } from "@/components/player/StreamModal";
 import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
 import { useItemProgress, useMarkAsWatched, isMovieWatched } from "@/hooks/use-watch-history";
@@ -449,24 +449,15 @@ export function MovieDetailContent({ movie }: Props) {
         )}
       </div>
 
-      <WatchModal
+      <StreamModal
         open={watchOpen}
         onClose={() => setWatchOpen(false)}
         title={movie.title}
-        jellyfinInLibrary={jellyfinLibrary?.inLibrary}
-        jellyfinItemId={jellyfinLibrary?.jellyfinItemId}
-        jellyfinItemUrl={jellyfinLibrary?.jellyfinItemUrl}
-        onPlayStream={(url) => {
+        tmdbId={movie.id}
+        mediaType="movie"
+        onSelectStream={(stream) => {
           setWatchOpen(false);
-          setActiveStream(url);
-        }}
-        streamingOptions={streamingOptions}
-        mediaInfo={{
-          streamUrl: "",
-          title: movie.title,
-          type: "movie",
-          year: movie.release_date ? new Date(movie.release_date).getFullYear() : undefined,
-          tmdbId: movie.id,
+          setActiveStream(stream.url);
         }}
       />
     </article>
