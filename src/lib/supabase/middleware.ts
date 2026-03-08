@@ -1,11 +1,36 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+// ─── MODE MAINTENANCE ───────────────────────────────────────────────────────
+// Mettre à `true` pour bloquer tout le site et rediriger vers /maintenance.
+// Remettre à `false` et redéployer pour réactiver le site.
+export const MAINTENANCE_MODE = true;
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Rafraîchit la session Supabase Auth et gère les redirections auth + onboarding.
  * À appeler depuis src/middleware.ts (racine du projet).
  */
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // ── Maintenance gate ──────────────────────────────────────────────────────
+  if (MAINTENANCE_MODE) {
+    const isMaintenancePage = pathname === "/maintenance";
+    const isStaticAsset =
+      pathname.startsWith("/_next/") || pathname.includes(".");
+
+    if (!isMaintenancePage && !isStaticAsset) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/maintenance";
+      return NextResponse.redirect(url);
+    }
+
+    // On /maintenance or static asset — let it through
+    return NextResponse.next({ request });
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -33,8 +58,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
 
   const isAuthPage =
     pathname.startsWith("/connexion") ||
