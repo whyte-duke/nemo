@@ -3,20 +3,19 @@
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2 } from "lucide-react";
-import { WatchModal } from "@/components/player/WatchModal";
+import { StreamModal } from "@/components/player/StreamModal";
 import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { useMovieDetail } from "@/hooks/use-tmdb";
-import { useJellyfinLibraryCheck } from "@/hooks/use-jellyfin-library";
-import { useStreamingAvailability } from "@/hooks/use-streaming-availability";
-import { useStreamingPreferences, filterStreamingOptions } from "@/hooks/use-streaming-preferences";
 import { useStream } from "@/providers/stream-provider";
 import { useItemProgress } from "@/hooks/use-watch-history";
 import { tmdbImage } from "@/lib/tmdb/client";
+import type { ParsedStream } from "@/types/stremio";
 
 interface MovieWatchModalProps {
   open: boolean;
   onClose: () => void;
   movieId: number;
+  onDownloadToJellyfin?: (stream: ParsedStream) => void;
 }
 
 /**
@@ -24,14 +23,8 @@ interface MovieWatchModalProps {
  * à partir d'un seul TMDB movie id. Charge le détail, la dispo Jellyfin et
  * les options de streaming, puis affiche le même flux que la page détail film.
  */
-export function MovieWatchModal({ open, onClose, movieId }: MovieWatchModalProps) {
+export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin }: MovieWatchModalProps) {
   const { data: movie, isLoading: movieLoading } = useMovieDetail(open && movieId > 0 ? movieId : 0);
-  const { data: jellyfinLibrary } = useJellyfinLibraryCheck(movie?.id ?? 0, "movie");
-  const { data: rawStreamingOptions } = useStreamingAvailability(movie?.imdb_id ?? null);
-  const streamingPrefs = useStreamingPreferences();
-  const streamingOptions = rawStreamingOptions
-    ? filterStreamingOptions(rawStreamingOptions, streamingPrefs)
-    : undefined;
   const { resolveStreams } = useStream();
   const historyEntry = useItemProgress(movieId, "movie");
 
@@ -94,30 +87,19 @@ export function MovieWatchModal({ open, onClose, movieId }: MovieWatchModalProps
   }
 
   const title = movie.title ?? "";
-  const year = movie.release_date ? new Date(movie.release_date).getFullYear() : undefined;
 
   return (
-    <WatchModal
+    <StreamModal
       open={open}
       onClose={onClose}
       title={title}
-      jellyfinInLibrary={jellyfinLibrary?.inLibrary}
-      jellyfinItemUrl={jellyfinLibrary?.jellyfinItemUrl}
-      jellyfinItemId={jellyfinLibrary?.jellyfinItemId}
-      streamingOptions={streamingOptions}
-      mediaInfo={{
-        streamUrl: "",
-        title,
-        type: "movie",
-        year,
-        tmdbId: movie.id,
-      }}
-      onPlayStream={(url, t, tmdbId, _mediaType, startTime) => {
-        // 1. Fermer le modal en premier
+      tmdbId={movie.id}
+      mediaType="movie"
+      onSelectStream={(stream) => {
         onClose();
-        // 2. Ouvrir le NemoPlayer — activeStream check est AVANT if (!open) dans ce composant
-        setActiveStream({ url, title: t, tmdbId, startTime: startTime ?? resumeTime });
+        setActiveStream({ url: stream.url, title, tmdbId: movie.id, startTime: resumeTime });
       }}
+      onDownloadToJellyfin={onDownloadToJellyfin}
     />
   );
 }

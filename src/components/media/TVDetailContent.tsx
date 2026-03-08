@@ -23,7 +23,7 @@ import {
 import { cn, formatYear, formatDate } from "@/lib/utils";
 import { tmdbImage, getTrailerKey } from "@/lib/tmdb/client";
 import { MediaRow } from "./MediaRow";
-import { WatchModal } from "@/components/player/WatchModal";
+import { StreamModal } from "@/components/player/StreamModal";
 import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { SeasonDownloadModal } from "@/components/download/SeasonDownloadModal";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
@@ -715,8 +715,8 @@ export function TVDetailContent({ show }: Props) {
         )}
       </div>
 
-      {/* ── WatchModal épisode (lecture / téléchargement via Play) ── */}
-      <WatchModal
+      {/* ── StreamModal épisode (lecture) ── */}
+      <StreamModal
         open={watchOpen}
         onClose={() => setWatchOpen(false)}
         title={
@@ -724,21 +724,16 @@ export function TVDetailContent({ show }: Props) {
             ? `${show.name} — S${String(selectedSeason).padStart(2, "0")}E${String(activeEpisode).padStart(2, "0")}`
             : show.name
         }
-        jellyfinInLibrary={jellyfinLibrary?.inLibrary}
-        jellyfinItemUrl={jellyfinLibrary?.jellyfinItemUrl}
-        mediaInfo={{
-          streamUrl: "",
-          title: show.name,
-          type: "tv",
-          seasonNumber: selectedSeason,
-          episodeNumber: activeEpisode ?? undefined,
-          episodeTitle: seasonData?.episodes?.find((e) => e.episode_number === activeEpisode)?.name,
-          tmdbId: show.id,
+        tmdbId={show.id}
+        mediaType="tv"
+        onSelectStream={(stream) => {
+          setWatchOpen(false);
+          setActiveStream(stream.url);
         }}
       />
 
-      {/* ── WatchModal dédié au téléchargement d'un épisode (bouton Download) ── */}
-      <WatchModal
+      {/* ── StreamModal dédié au téléchargement d'un épisode (bouton Download) ── */}
+      <StreamModal
         open={downloadWatchOpen}
         onClose={() => { setDownloadWatchOpen(false); setDownloadEpisode(null); }}
         title={
@@ -746,16 +741,12 @@ export function TVDetailContent({ show }: Props) {
             ? `${show.name} — S${String(selectedSeason).padStart(2, "0")}E${String(downloadEpisode).padStart(2, "0")}`
             : show.name
         }
-        jellyfinInLibrary={jellyfinLibrary?.inLibrary}
-        jellyfinItemUrl={jellyfinLibrary?.jellyfinItemUrl}
-        mediaInfo={{
-          streamUrl: "",
-          title: show.name,
-          type: "tv",
-          seasonNumber: selectedSeason,
-          episodeNumber: downloadEpisode ?? undefined,
-          episodeTitle: seasonData?.episodes?.find((e) => e.episode_number === downloadEpisode)?.name,
-          tmdbId: show.id,
+        tmdbId={show.id}
+        mediaType="tv"
+        onSelectStream={(stream) => {
+          setDownloadWatchOpen(false);
+          setDownloadEpisode(null);
+          setActiveStream(stream.url);
         }}
       />
 
