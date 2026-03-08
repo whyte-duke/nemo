@@ -283,7 +283,6 @@ export function NemoPlayer({
         poster={poster}
         storage={storage}
         playsInline
-        crossOrigin
         className="w-full h-full"
         style={{ "--media-brand": "#e8b84b" } as React.CSSProperties & Record<`--${string}`, string>}
       >
