@@ -10,7 +10,7 @@ import { useMyLists, useToggleItemInList, useDeleteList, useUpdateList } from "@
 import { useStream } from "@/providers/stream-provider";
 import { MovieWatchModal } from "@/components/player/MovieWatchModal";
 import { StreamModal } from "@/components/player/StreamModal";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { CreateListModal } from "@/components/lists/CreateListModal";
 import { tmdbImage } from "@/lib/tmdb/client";
 import type { ListSummary } from "@/hooks/use-lists";
@@ -142,7 +142,7 @@ export default function MesListesPage() {
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <VideoPlayer
+        <NemoPlayer
           url={activeStream}
           title={activeTitle}
           onBack={() => setActiveStream(null)}

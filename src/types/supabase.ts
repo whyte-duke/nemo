@@ -102,6 +102,9 @@ export interface Database {
           episode_number: number | null;
           last_watched_at: string;
           created_at: string;
+          last_position_seconds: number | null;
+          preferred_audio_lang: string | null;
+          preferred_subtitle_lang: string | null;
         };
         Insert: {
           id?: string;
@@ -114,6 +117,9 @@ export interface Database {
           episode_number?: number | null;
           last_watched_at?: string;
           created_at?: string;
+          last_position_seconds?: number | null;
+          preferred_audio_lang?: string | null;
+          preferred_subtitle_lang?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["watch_history"]["Insert"]>;
       };

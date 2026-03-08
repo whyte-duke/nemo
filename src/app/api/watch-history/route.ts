@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     duration?: number;
     seasonNumber?: number;
     episodeNumber?: number;
+    lastPositionSeconds?: number;
   };
   try {
     body = await request.json();
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Corps invalide" }, { status: 400 });
   }
 
-  const { tmdbId, mediaType, progress, duration, seasonNumber, episodeNumber } = body;
+  const { tmdbId, mediaType, progress, duration, seasonNumber, episodeNumber, lastPositionSeconds } = body;
   if (typeof tmdbId !== "number" || !mediaType || typeof progress !== "number") {
     return NextResponse.json({ error: "Paramètres manquants" }, { status: 400 });
   }
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
       season_number: seasonNumber ?? null,
       episode_number: episodeNumber ?? null,
       last_watched_at: new Date().toISOString(),
+      last_position_seconds: lastPositionSeconds ?? null,
     },
     { onConflict: "user_id,tmdb_id,media_type" }
   );

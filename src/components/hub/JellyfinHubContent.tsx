@@ -13,7 +13,7 @@ import {
   ArrowLeft,
   AlertCircle,
 } from "lucide-react";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { JellyfinIcon } from "@/components/icons/JellyfinIcon";
 import { useProfile } from "@/hooks/use-profile";
 import { cn } from "@/lib/utils";
@@ -231,7 +231,7 @@ export function JellyfinHubContent() {
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <VideoPlayer
+        <NemoPlayer
           url={activeStream.url}
           title={activeStream.title}
           tmdbId={activeStream.tmdbId}

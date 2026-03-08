@@ -620,3 +620,13 @@ a:focus-visible {
 *:focus:not(:focus-visible) {
   outline: none;
 }
+
+
+/* ─── Vidstack player theming ────────────────────────────────────────────── */
+
+.vds-player {
+  --media-brand: #e8b84b;
+  --media-focus-ring-color: #e8b84b;
+  --media-controls-color: #f0f0f5;
+  --media-font-family: var(--font-geist-sans, system-ui, sans-serif);
+}

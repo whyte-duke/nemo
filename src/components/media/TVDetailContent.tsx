@@ -24,7 +24,7 @@ import { cn, formatYear, formatDate } from "@/lib/utils";
 import { tmdbImage, getTrailerKey } from "@/lib/tmdb/client";
 import { MediaRow } from "./MediaRow";
 import { WatchModal } from "@/components/player/WatchModal";
-import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { SeasonDownloadModal } from "@/components/download/SeasonDownloadModal";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
 import { useAuth } from "@/hooks/use-auth";
@@ -341,7 +341,7 @@ export function TVDetailContent({ show }: Props) {
   if (activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <VideoPlayer
+        <NemoPlayer
           url={activeStream}
           tmdbId={show.id}
           mediaType="tv"
