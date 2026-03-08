@@ -31,8 +31,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_cle_anon
 SUPABASE_SERVICE_ROLE_KEY=votre_service_role
 
-# StreamFusion (optionnel, déjà configuré)
+# StreamFusion (optionnel)
 NEXT_PUBLIC_STREAMFUSION_BASE=https://stream-fusion.stremiofr.com
+NEXT_PUBLIC_STREAMFUSION_API_KEY=votre_cle_api_streamfusion
+NEXT_PUBLIC_ALLDEBRID_TOKEN=votre_token_alldebrid
 ```
 
 ## 🗄️ Base de données Supabase

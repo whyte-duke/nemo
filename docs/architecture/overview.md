@@ -374,6 +374,8 @@ Fichiers : `lib/recommendations/scorer.ts`, `lib/recommendations/taste-profile.t
 | `NEXT_PUBLIC_APP_URL` | URL publique de l'application | `https://nemo.laubier.online` |
 | `NEXT_PUBLIC_JELLYFIN_URL` | URL du serveur Jellyfin principal | - |
 | `NEXT_PUBLIC_STREAMFUSION_BASE` | URL de l'addon StreamFusion | `https://stream-fusion.stremiofr.com` |
+| `NEXT_PUBLIC_STREAMFUSION_API_KEY` | Cle API addon StreamFusion | - |
+| `NEXT_PUBLIC_ALLDEBRID_TOKEN` | Token AllDebrid (debridage via StreamFusion) | - |
 | `NEXT_PUBLIC_DOWNLOAD_API_URL` | URL de l'API de telechargement | `http://localhost:8181/api` |
 | `NEXT_PUBLIC_TRAKT_ENABLED` | Active l'import Trakt dans l'onboarding | - |
 

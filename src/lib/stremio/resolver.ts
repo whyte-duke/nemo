@@ -179,10 +179,10 @@ export function parseStreams(response: StremioStreamsResponse): ParsedStream[] {
 export function buildDefaultConfig(): StreamFusionConfig {
   return {
     addonHost: STREAMFUSION_BASE,
-    apiKey: "4c529e67-9b1e-4023-b035-5fcff031d2bc",
+    apiKey: process.env.NEXT_PUBLIC_STREAMFUSION_API_KEY ?? "",
     service: ["AllDebrid"],
     RDToken: "",
-    ADToken: "INMGYnCEM9IzZcBHQxfA",
+    ADToken: process.env.NEXT_PUBLIC_ALLDEBRID_TOKEN ?? "",
     TBToken: "",
     PMToken: "",
     TBUsenet: false,

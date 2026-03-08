@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // ─── MODE MAINTENANCE ───────────────────────────────────────────────────────
 // Mettre à `true` pour bloquer tout le site et rediriger vers /maintenance.
 // Remettre à `false` et redéployer pour réactiver le site.
-export const MAINTENANCE_MODE = true;
+export const MAINTENANCE_MODE = false;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
