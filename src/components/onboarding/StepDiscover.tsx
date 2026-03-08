@@ -73,7 +73,7 @@ export default function StepDiscover({ onNext }: StepDiscoverProps) {
 
       {/* Stack de cartes */}
       {!isLoading && cards.length > 0 && !isMilestone && !navigating && (
-        <div className="w-full" style={{ height: 480 }}>
+        <div className="w-full h-[480px] md:h-[560px] lg:h-[620px]">
           <SwipeStack
             cards={cards}
             currentIndex={currentIndex}

@@ -62,8 +62,27 @@ function OnboardingContent() {
   const { data: profile, isLoading: profileLoading } = useProfile();
 
   const stepParam = searchParams.get("step");
+  const resetParam = searchParams.get("reset");
   const [step, setStep] = useState(stepParam ? parseInt(stepParam) : 1);
   const [importResults, setImportResults] = useState<ImportResults>({});
+
+  // Clear localStorage when coming from reset-onboarding (?reset=1)
+  useEffect(() => {
+    if (resetParam === "1" && typeof window !== "undefined") {
+      const keysToReset = [
+        "nemo_swipe_session",
+        "nemo_swipe_pending",
+        "nemo_discover_onboarded",
+        "nemo_pas_vu",
+      ];
+      keysToReset.forEach((k) => localStorage.removeItem(k));
+      // Remove ?reset=1 from URL without triggering a re-render loop
+      const url = new URL(window.location.href);
+      url.searchParams.delete("reset");
+      router.replace(url.pathname + url.search);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetParam]);
 
   // Sync step from URL (important pour le retour depuis OAuth)
   useEffect(() => {
