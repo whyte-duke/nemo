@@ -7,8 +7,32 @@ import type { MediaStorage, SerializedVideoQuality } from "@vidstack/react";
  * - Time (position): `getTime()` returns `initialTime` (from Supabase `last_position_seconds`).
  *   `setTime()` persists to localStorage for within-session reliability.
  *   Supabase persistence is handled by ProgressSaver component in NemoPlayer.
- * - Volume, muted, playback rate, quality, gain, lang, captions: localStorage only.
+ *
+ * - Volume, muted, playback rate: GLOBAL (shared across all media).
+ *   Stored under `nemo-player:global:*` so the user's volume/mute preference
+ *   persists regardless of which film they watch.
+ *
+ * - Quality, gain, lang, captions: per-media (tied to the media key).
  */
+
+const GLOBAL = "nemo-player:global";
+
+function ls(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function lsSet(key: string, val: string): void {
+  try {
+    localStorage.setItem(key, val);
+  } catch {
+    /* ignore */
+  }
+}
+
 export class NemoMediaStorage implements MediaStorage {
   private readonly _prefix: string;
   private readonly _initialTime: number;
@@ -23,26 +47,18 @@ export class NemoMediaStorage implements MediaStorage {
   }
 
   private _get(k: string): string | null {
-    try {
-      return localStorage.getItem(this._key(k));
-    } catch {
-      return null;
-    }
+    return ls(this._key(k));
   }
 
   private _set(k: string, v: string): void {
-    try {
-      localStorage.setItem(this._key(k), v);
-    } catch {
-      // localStorage unavailable or full
-    }
+    lsSet(this._key(k), v);
   }
 
   private _del(k: string): void {
     try {
       localStorage.removeItem(this._key(k));
     } catch {
-      // noop
+      /* noop */
     }
   }
 
@@ -56,42 +72,41 @@ export class NemoMediaStorage implements MediaStorage {
     this._set("t", ended ? "0" : String(Math.floor(time)));
   }
 
-  // ── Volume ────────────────────────────────────────────────────────────────
+  // ── Volume — GLOBAL, default 1 (audible) ───────────────────────────────────
 
   async getVolume(): Promise<number | null> {
-    const v = this._get("vol");
-    if (v === null) return null;
+    const v = ls(`${GLOBAL}:vol`);
+    if (v === null) return 1;
     const n = parseFloat(v);
-    return isNaN(n) ? null : Math.max(0, Math.min(1, n));
+    return isNaN(n) ? 1 : Math.max(0, Math.min(1, n));
   }
 
   async setVolume(volume: number): Promise<void> {
-    this._set("vol", String(volume));
+    lsSet(`${GLOBAL}:vol`, String(volume));
   }
 
-  // ── Muted ─────────────────────────────────────────────────────────────────
+  // ── Muted — GLOBAL, default false (unmuted) ────────────────────────────────
 
   async getMuted(): Promise<boolean | null> {
-    const v = this._get("muted");
-    if (v === null) return false; // Default to unmuted — prevents accumulation of muted state
-    return v === "true";
+    const v = ls(`${GLOBAL}:muted`);
+    return v === "true" ? true : false;
   }
 
   async setMuted(muted: boolean): Promise<void> {
-    this._set("muted", String(muted));
+    lsSet(`${GLOBAL}:muted`, String(muted));
   }
 
-  // ── Playback rate ─────────────────────────────────────────────────────────
+  // ── Playback rate — GLOBAL ────────────────────────────────────────────────
 
   async getPlaybackRate(): Promise<number | null> {
-    const v = this._get("rate");
+    const v = ls(`${GLOBAL}:rate`);
     if (v === null) return null;
     const n = parseFloat(v);
     return isNaN(n) ? null : n;
   }
 
   async setPlaybackRate(rate: number): Promise<void> {
-    this._set("rate", String(rate));
+    lsSet(`${GLOBAL}:rate`, String(rate));
   }
 
   // ── Video quality ─────────────────────────────────────────────────────────

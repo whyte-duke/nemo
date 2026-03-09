@@ -11,7 +11,9 @@ import { tmdbImage, getTrailerKey } from "@/lib/tmdb/client";
 import { MediaRow } from "./MediaRow";
 import { StreamModal } from "@/components/player/StreamModal";
 import { NemoPlayer } from "@/components/player/NemoPlayer";
+import { DownloadModal } from "@/components/download/DownloadModal";
 import { saveLastStream, getLastStream } from "@/lib/player/last-stream";
+import { useProfile } from "@/hooks/use-profile";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
 import { useItemProgress, useMarkAsWatched, isMovieWatched } from "@/hooks/use-watch-history";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,6 +24,10 @@ import { useStreamingAvailability } from "@/hooks/use-streaming-availability";
 import { useStreamingPreferences, filterStreamingOptions } from "@/hooks/use-streaming-preferences";
 import { useItemRecommendation } from "@/lib/recommendations/context";
 import type { TMDbMovieDetail } from "@/types/tmdb";
+import type { ParsedStream } from "@/types/stremio";
+
+/** TEMPORAIRE: true = sélection source → lance VLC uniquement (pas le player in-app). Remettre à false pour réactiver NemoPlayer. */
+const TEMP_VLC_ONLY = true;
 
 interface Props {
   movie: TMDbMovieDetail;
@@ -32,8 +38,12 @@ export function MovieDetailContent({ movie }: Props) {
   const [activeStream, setActiveStream] = useState<{ url: string; startTime?: number } | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [jellyfinStream, setJellyfinStream] = useState<ParsedStream | null>(null);
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { resolveStreams } = useStream();
+
+  const canDownloadJellyfin = profile?.role === "vip" || profile?.role === "admin";
   const isInList = useIsInMyList(movie.id, "movie");
   const { mutate: toggleList } = useToggleMyList();
   const { interaction, setInteraction } = useInteraction(movie.id, "movie");
@@ -82,7 +92,8 @@ export function MovieDetailContent({ movie }: Props) {
     movie.images.logos.find((l) => l.iso_639_1 === "en")
   )?.file_path;
 
-  if (activeStream) {
+  // (Désactivé quand TEMP_VLC_ONLY : on ne met plus activeStream, on lance VLC.)
+  if (!TEMP_VLC_ONLY && activeStream) {
     return (
       <div className="fixed inset-0 z-(--z-overlay) bg-black">
         <NemoPlayer
@@ -474,9 +485,34 @@ export function MovieDetailContent({ movie }: Props) {
         onSelectStream={(stream) => {
           saveLastStream(movie.id, "movie", stream.url);
           setWatchOpen(false);
+          if (TEMP_VLC_ONLY) {
+            window.location.href = `vlc://${stream.url}`;
+            return;
+          }
           setActiveStream({ url: stream.url, startTime: resumeTime });
         }}
+        onDownloadToJellyfin={
+          canDownloadJellyfin
+            ? (stream) => {
+                setWatchOpen(false);
+                setJellyfinStream(stream);
+              }
+            : undefined
+        }
       />
+      {jellyfinStream && (
+        <DownloadModal
+          open
+          onClose={() => setJellyfinStream(null)}
+          mediaInfo={{
+            streamUrl: jellyfinStream.url,
+            title: movie.title ?? "",
+            type: "movie",
+            year: movie.release_date ? parseInt(movie.release_date.slice(0, 4), 10) : undefined,
+            tmdbId: movie.id,
+          }}
+        />
+      )}
     </article>
   );
 }

@@ -8,6 +8,7 @@ import { useEffect, useRef, useMemo, useCallback } from "react";
 import {
   MediaPlayer,
   MediaProvider,
+  Poster,
   Track,
   useMediaState,
   type MediaPlayerInstance,
@@ -17,7 +18,7 @@ import {
   DefaultVideoLayout,
   defaultLayoutIcons,
 } from "@vidstack/react/player/layouts/default";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Volume2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { NemoMediaStorage } from "@/lib/player/media-storage";
@@ -70,6 +71,31 @@ function buildSrc(url: string, mimeType?: string): PlayerSrc {
   // Cast required: Vidstack's PlayerSrc union uses strict MIME literal types
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { src: url, type: mimeType ?? detectMimeType(url) } as any;
+}
+
+/** Joue un bip court via Web Audio API — pour tester si le site peut émettre du son. */
+function playTestBeep(): void {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    if (ctx.state === "suspended") {
+      void ctx.resume().then(() => playTestBeep());
+      return;
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 440;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+  } catch {
+    /* ignore */
+  }
 }
 
 // ─── ProgressSaver — inner component (must be inside <MediaPlayer>) ───────────
@@ -216,6 +242,7 @@ export function NemoPlayer({
   onChangeSource,
 }: NemoPlayerProps) {
   const playerRef = useRef<MediaPlayerInstance>(null);
+  const unmuteAppliedRef = useRef(false);
 
   const storage = useMemo(
     () =>
@@ -276,25 +303,79 @@ export function NemoPlayer({
         </button>
       )}
 
+      {/* ── Test son (diagnostic) ── */}
+      <button
+        onClick={playTestBeep}
+        aria-label="Test son — vérifier si le site peut émettre du son"
+        title="Test son"
+        className={cn(
+          "absolute top-4 right-4 z-50",
+          "flex items-center gap-2 px-3 py-2 rounded-xl",
+          "bg-amber-500/20 backdrop-blur-sm border border-amber-500/40",
+          "text-amber-300 hover:text-amber-200 hover:bg-amber-500/30 transition-all",
+          "text-sm font-medium",
+          onChangeSource ? "right-36" : ""
+        )}
+      >
+        <Volume2 className="size-4" />
+        <span className="hidden sm:inline">Test son</span>
+      </button>
+
       <MediaPlayer
         ref={playerRef}
         src={src}
+        viewType="video"
+        streamType="on-demand"
+        logLevel="warn"
         title={title}
         poster={poster}
         storage={storage}
         playsInline
+        muted={false}
+        volume={1}
         className="w-full h-full"
         style={{ "--media-brand": "#e8b84b" } as React.CSSProperties & Record<`--${string}`, string>}
+        onCanPlay={() => {
+          // Workaround Vidstack #1416: props muted/volume peuvent être ignorés au chargement.
+          if (unmuteAppliedRef.current) return;
+          unmuteAppliedRef.current = true;
+          const apply = () => {
+            const p = playerRef.current;
+            if (!p) return;
+            try {
+              if (localStorage.getItem("nemo-player:global:muted") === "true") return;
+            } catch {
+              /* ignore */
+            }
+            if (p.muted) p.muted = false;
+            if (p.volume === 0) p.volume = 1;
+          };
+          setTimeout(apply, 0);
+          setTimeout(apply, 150);
+        }}
+        onAutoPlayFail={() => {
+          // Autoplay bloqué par le navigateur → souvent démarré en muted.
+          unmuteAppliedRef.current = false;
+          const apply = () => {
+            const p = playerRef.current;
+            if (!p) return;
+            if (p.muted) p.muted = false;
+            if (p.volume === 0) p.volume = 1;
+          };
+          setTimeout(apply, 0);
+        }}
       >
         <MediaProvider>
+          {poster && <Poster className="vds-poster" />}
           {subtitles.map((sub, i) => (
             <Track
-              key={String(i)}
+              key={sub.src ?? String(i)}
               src={sub.src}
               kind="subtitles"
               label={sub.label}
               lang={sub.language}
               default={sub.default}
+              type={/\.srt$/i.test(sub.src) ? "srt" : "vtt"}
             />
           ))}
         </MediaProvider>

@@ -22,9 +22,9 @@ function JellyfinLogo({ className }: { className?: string }) {
   );
 }
 
-function VLCLogo({ size = 32 }: { size?: number }) {
+function VLCLogo({ size = 32, className }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden className={className}>
       <rect width="512" height="512" rx="115" fill="#FF8800" />
       <ellipse cx="256" cy="340" rx="145" ry="18" fill="rgba(0,0,0,0.25)" />
       <path d="M256 72 L390 330 H122 Z" fill="white" />
@@ -98,56 +98,108 @@ function AdvancedSheet({ stream, title, onClose, onDownloadToJellyfin }: Advance
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 6, scale: 0.97 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
-      className="absolute inset-x-0 bottom-0 z-10 rounded-b-2xl bg-[#0a0d14] border-t border-white/8 p-3 space-y-1.5"
+      className="absolute inset-x-0 bottom-0 z-10 rounded-b-2xl bg-[#0a0d14] border-t border-white/8 p-4 pb-[env(safe-area-inset-bottom,0.5rem)] max-h-[70vh] overflow-y-auto overscroll-contain"
     >
-      <button
-        type="button"
-        onClick={handleOpenInVLC}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 transition-colors text-left"
-      >
-        <VLCLogo size={20} />
-        <div>
-          <span className="text-white/80 text-sm font-medium block">Ouvrir dans VLC</span>
-          <span className="text-white/30 text-xs">Lance le stream dans l&apos;application VLC</span>
-        </div>
-      </button>
-
-      <button
-        type="button"
-        onClick={handleDownloadM3U}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 transition-colors text-left"
-      >
-        <ExternalLink className="size-5 text-white/40 shrink-0" />
-        <span className="text-white/70 text-sm">Télécharger .m3u</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={handleDownloadOffline}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 transition-colors text-left"
-      >
-        <Download className="size-5 text-white/40 shrink-0" />
-        <span className="text-white/70 text-sm">Télécharger hors-ligne</span>
-      </button>
-
-      {onDownloadToJellyfin && (
+      {/* Mobile : VLC en avant, gros bouton principal */}
+      <div className="flex flex-col gap-3 sm:hidden">
         <button
           type="button"
-          onClick={() => { onDownloadToJellyfin(stream); onClose(); }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#00a4dc]/8 transition-colors text-left"
+          onClick={handleOpenInVLC}
+          className="w-full flex items-center gap-4 px-4 py-4 min-h-14 rounded-2xl bg-[#FF8800]/20 border-2 border-[#FF8800]/50 hover:bg-[#FF8800]/30 active:scale-[0.98] transition-all text-left touch-manipulation"
         >
-          <JellyfinLogo className="size-5 text-[#00a4dc]" />
-          <div>
-            <span className="text-white/80 text-sm font-medium block">Envoyer sur Jellyfin</span>
-            <span className="text-white/30 text-xs">Télécharge directement sur ton NAS</span>
+          <VLCLogo size={28} className="shrink-0" />
+          <div className="min-w-0">
+            <span className="text-orange-200 font-bold text-base block">Ouvrir avec VLC</span>
+            <span className="text-white/50 text-xs block mt-0.5">Lance la lecture dans VLC</span>
           </div>
         </button>
-      )}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadM3U}
+            className="flex-1 min-w-35 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-sm font-medium touch-manipulation"
+          >
+            <ExternalLink className="size-4 shrink-0" />
+            Télécharger .m3u
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadOffline}
+            className="flex-1 min-w-35 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-sm font-medium touch-manipulation"
+          >
+            <Download className="size-4 shrink-0" />
+            Fichier hors-ligne
+          </button>
+        </div>
+        {onDownloadToJellyfin && (
+          <button
+            type="button"
+            onClick={() => { onDownloadToJellyfin(stream); onClose(); }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-[#00a4dc]/10 border border-[#00a4dc]/20 text-white/80 text-sm font-medium touch-manipulation"
+          >
+            <JellyfinLogo className="size-5 text-[#00a4dc] shrink-0" />
+            Envoyer sur Jellyfin
+          </button>
+        )}
+      </div>
+
+      {/* Desktop : flux clair « Télécharger le lien » puis « Ouvrir avec VLC » */}
+      <div className="hidden sm:block space-y-4">
+        <p className="text-white/50 text-xs font-medium uppercase tracking-wider">
+          Lire sur ton ordinateur
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadM3U}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/8 text-left transition-colors"
+          >
+            <span className="flex items-center justify-center size-8 rounded-lg bg-white/10 text-white/70 text-sm font-bold shrink-0">1</span>
+            <div className="min-w-0">
+              <span className="text-white/90 text-sm font-semibold block">Télécharger le lien .m3u</span>
+              <span className="text-white/40 text-xs block mt-0.5">Récupère le fichier, puis ouvre-le avec VLC</span>
+            </div>
+            <ExternalLink className="size-4 text-white/30 shrink-0 ml-auto" />
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenInVLC}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#FF8800]/15 border border-[#FF8800]/40 hover:bg-[#FF8800]/25 text-left transition-colors"
+          >
+            <span className="flex items-center justify-center size-8 rounded-lg bg-[#FF8800]/30 text-orange-300 text-sm font-bold shrink-0">2</span>
+            <VLCLogo size={22} className="shrink-0" />
+            <div className="min-w-0">
+              <span className="text-orange-200 font-semibold text-sm block">Ouvrir avec VLC</span>
+              <span className="text-white/40 text-xs block mt-0.5">Lance le stream directement dans VLC</span>
+            </div>
+          </button>
+        </div>
+        <div className="border-t border-white/8 pt-3 space-y-2">
+          <button
+            type="button"
+            onClick={handleDownloadOffline}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-white/60 text-sm transition-colors text-left"
+          >
+            <Download className="size-4 text-white/40 shrink-0" />
+            Télécharger hors-ligne
+          </button>
+          {onDownloadToJellyfin && (
+            <button
+              type="button"
+              onClick={() => { onDownloadToJellyfin(stream); onClose(); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-[#00a4dc]/10 text-white/60 text-sm transition-colors text-left"
+            >
+              <JellyfinLogo className="size-4 text-[#00a4dc] shrink-0" />
+              Envoyer sur Jellyfin
+            </button>
+          )}
+        </div>
+      </div>
 
       <button
         type="button"
         onClick={onClose}
-        className="w-full py-2 text-white/30 hover:text-white/60 text-xs transition-colors"
+        className="w-full py-3 mt-3 min-h-11 text-white/40 hover:text-white/70 active:text-white/90 text-sm transition-colors touch-manipulation border-t border-white/8 sm:border-0 sm:mt-4 sm:pt-0"
       >
         Annuler
       </button>
@@ -267,7 +319,7 @@ export function StreamModal({ open, onClose, onSelectStream, onDownloadToJellyfi
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 40 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="fixed inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 bottom-4 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-(--z-modal) w-full sm:w-135 max-h-[80dvh] flex flex-col rounded-2xl bg-[#0e1018] border border-white/8 shadow-2xl focus:outline-none overflow-hidden"
+                className="fixed inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-(--z-modal) w-full sm:w-135 max-h-[80dvh] flex flex-col rounded-2xl bg-[#0e1018] border border-white/8 shadow-2xl focus:outline-none overflow-hidden bottom-[max(1rem,env(safe-area-inset-bottom))]"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 shrink-0">
@@ -308,13 +360,13 @@ export function StreamModal({ open, onClose, onSelectStream, onDownloadToJellyfi
                   {!state.isLoading && state.streams.length > 0 && (
                     <>
                       <p className="text-white/30 text-xs tabular-nums pb-1">
-                        {state.streams.length} source{state.streams.length > 1 ? "s" : ""} — cliquer pour lire
+                        {state.streams.length} source{state.streams.length > 1 ? "s" : ""} — cliquer pour ouvrir (VLC, M3U…)
                       </p>
                       {displayedStreams.map((stream) => (
                         <StreamCard
                           key={stream.id}
                           stream={stream}
-                          onSelect={handleSelect}
+                          onSelect={(s) => setAdvancedStream(s)}
                           onAdvanced={setAdvancedStream}
                         />
                       ))}

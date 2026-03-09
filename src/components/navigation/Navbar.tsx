@@ -107,33 +107,36 @@ function SearchBar({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="relative w-full">
-      {/* Input */}
-      <div className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2 border border-white/15">
+      {/* Input — fond sombre + fort flou pour rester lisible sur fond clair */}
+      <div className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl rounded-full px-4 py-2 border border-white/20 shadow-lg shadow-black/30">
         <Search className="size-4 text-white/50 shrink-0" />
         <input
           ref={inputRef}
-          type="search"
+          type="text"
+          role="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Films, séries, acteurs..."
-          className="flex-1 bg-transparent text-white placeholder:text-white/40 text-sm outline-none"
+          className="flex-1 min-w-0 bg-transparent text-white placeholder:text-white/40 text-sm outline-none [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
           style={{ fontSize: "16px" }}
           autoComplete="off"
         />
         {query ? (
           <button
+            type="button"
             onClick={() => setQuery("")}
-            aria-label="Effacer"
-            className="text-white/40 hover:text-white/70 transition-colors"
+            aria-label="Effacer la recherche"
+            className="text-white/40 hover:text-white/70 transition-colors shrink-0"
           >
             <X className="size-4" />
           </button>
         ) : (
           <button
+            type="button"
             onClick={onClose}
             aria-label="Fermer la recherche"
-            className="text-white/40 hover:text-white/70 transition-colors"
+            className="text-white/40 hover:text-white/70 transition-colors shrink-0"
           >
             <X className="size-4" />
           </button>
@@ -148,8 +151,7 @@ function SearchBar({ onClose }: { onClose: () => void }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full mt-2 left-0 right-0 glass-tile overflow-hidden shadow-2xl z-(--z-modal)"
-            style={{ borderRadius: "20px" }}
+            className="absolute top-full mt-2 left-0 right-0 overflow-hidden shadow-2xl z-(--z-modal) rounded-[20px] border border-white/15 bg-black/85 backdrop-blur-2xl"
           >
             {isFetching && !hasResults && (
               <div className="py-5 px-4 text-center">
