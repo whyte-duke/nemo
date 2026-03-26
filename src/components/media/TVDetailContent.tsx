@@ -24,8 +24,6 @@ import { cn, formatYear, formatDate } from "@/lib/utils";
 import { tmdbImage, getTrailerKey } from "@/lib/tmdb/client";
 import { MediaRow } from "./MediaRow";
 import { StreamModal } from "@/components/player/StreamModal";
-import { NemoPlayer } from "@/components/player/NemoPlayer";
-import { saveLastStream, getLastStream } from "@/lib/player/last-stream";
 import { SeasonDownloadModal } from "@/components/download/SeasonDownloadModal";
 import { useIsInMyList, useToggleMyList, useInteraction } from "@/hooks/use-list";
 import { useAuth } from "@/hooks/use-auth";
@@ -233,7 +231,6 @@ function EpisodeCard({
 /* ─── Composant principal ──────────────────────────────────────── */
 export function TVDetailContent({ show }: Props) {
   const [watchOpen, setWatchOpen] = useState(false);
-  const [activeStream, setActiveStream] = useState<{ url: string; startTime?: number } | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(
@@ -274,24 +271,12 @@ export function TVDetailContent({ show }: Props) {
   const handlePlayEpisode = useCallback(
     async (episodeNumber: number) => {
       setActiveEpisode(episodeNumber);
-      const episodeSuffix = `s${selectedSeason}e${episodeNumber}`;
-      const lastUrl = getLastStream(show.id, "tv", episodeSuffix);
-      if (lastUrl) {
-        const resumeTime = showProgress
-          ? ((showProgress as { last_position_seconds?: number | null }).last_position_seconds ??
-              (showProgress.progress > 0 && showProgress.duration
-                ? Math.floor((showProgress.progress / 100) * showProgress.duration)
-                : 0))
-          : 0;
-        setActiveStream({ url: lastUrl, startTime: resumeTime });
-        return;
-      }
       if (!imdbId) { setWatchOpen(true); return; }
       const stremioId = `${imdbId}:${selectedSeason}:${episodeNumber}`;
       setWatchOpen(true);
       await resolveStreams(stremioId, "series");
     },
-    [imdbId, selectedSeason, resolveStreams, show.id, showProgress]
+    [imdbId, selectedSeason, resolveStreams]
   );
 
   const handleDownloadEpisode = useCallback(
@@ -350,25 +335,6 @@ export function TVDetailContent({ show }: Props) {
     show.images.logos.find((l) => l.iso_639_1 === "fr") ??
     show.images.logos.find((l) => l.iso_639_1 === "en")
   )?.file_path;
-
-  if (activeStream) {
-    return (
-      <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <NemoPlayer
-          url={activeStream.url}
-          tmdbId={show.id}
-          mediaType="tv"
-          title={show.name}
-          startTime={activeStream.startTime}
-          onBack={() => setActiveStream(null)}
-          onChangeSource={() => { setActiveStream(null); setWatchOpen(true); }}
-          className="w-full h-full"
-          seasonNumber={selectedSeason}
-          episodeNumber={activeEpisode ?? undefined}
-        />
-      </div>
-    );
-  }
 
   return (
     <article className="bg-nemo-bg min-h-dvh">
@@ -741,12 +707,6 @@ export function TVDetailContent({ show }: Props) {
         }
         tmdbId={show.id}
         mediaType="tv"
-        onSelectStream={(stream) => {
-          const episodeSuffix = activeEpisode ? `s${selectedSeason}e${activeEpisode}` : undefined;
-          if (episodeSuffix) saveLastStream(show.id, "tv", stream.url, episodeSuffix);
-          setWatchOpen(false);
-          setActiveStream({ url: stream.url });
-        }}
       />
 
       {/* ── StreamModal dédié au téléchargement d'un épisode (bouton Download) ── */}
@@ -760,11 +720,6 @@ export function TVDetailContent({ show }: Props) {
         }
         tmdbId={show.id}
         mediaType="tv"
-        onSelectStream={(stream) => {
-          setDownloadWatchOpen(false);
-          setDownloadEpisode(null);
-          setActiveStream({ url: stream.url });
-        }}
       />
 
       {/* ── SeasonDownloadModal ─────────────────────────────────────────────── */}

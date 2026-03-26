@@ -4,18 +4,11 @@ import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2 } from "lucide-react";
 import { StreamModal } from "@/components/player/StreamModal";
-import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { DownloadModal } from "@/components/download/DownloadModal";
-import { saveLastStream } from "@/lib/player/last-stream";
 import { useMovieDetail } from "@/hooks/use-tmdb";
 import { useStream } from "@/providers/stream-provider";
-import { useItemProgress } from "@/hooks/use-watch-history";
 import { useProfile } from "@/hooks/use-profile";
-import { tmdbImage } from "@/lib/tmdb/client";
 import type { ParsedStream } from "@/types/stremio";
-
-/** TEMPORAIRE: true = sélection source → lance VLC uniquement (pas le player in-app). Remettre à false pour réactiver NemoPlayer. */
-const TEMP_VLC_ONLY = false;
 
 interface MovieWatchModalProps {
   open: boolean;
@@ -33,7 +26,6 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin: 
   const { data: movie, isLoading: movieLoading } = useMovieDetail(open && movieId > 0 ? movieId : 0);
   const { resolveStreams } = useStream();
   const { data: profile } = useProfile();
-  const historyEntry = useItemProgress(movieId, "movie");
 
   const canDownloadJellyfin = profile?.role === "vip" || profile?.role === "admin";
   const [jellyfinStream, setJellyfinStream] = useState<ParsedStream | null>(null);
@@ -49,43 +41,11 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin: 
       }
     : undefined;
 
-  // Precise resume position (seconds) from last_position_seconds, fallback to percentage
-  const resumeTime = historyEntry
-    ? ((historyEntry as { last_position_seconds?: number | null }).last_position_seconds ??
-        (historyEntry.progress > 0 && historyEntry.duration
-          ? Math.floor((historyEntry.progress / 100) * historyEntry.duration)
-          : 0))
-    : 0;
-
-  const [activeStream, setActiveStream] = useState<{ url: string; title: string; tmdbId?: number; startTime?: number } | null>(null);
-
   useEffect(() => {
     if (open && movie?.imdb_id) {
       void resolveStreams(movie.imdb_id, "movie");
     }
   }, [open, movie?.imdb_id, resolveStreams]);
-
-  // ── VideoPlayer fullscreen — vérifié EN PREMIER, indépendamment de `open` ──
-  // Quand onPlayStream est appelé, onClose() ferme le modal (open → false)
-  // puis activeStream est défini. On doit afficher le player même si open=false.
-  // (Désactivé quand TEMP_VLC_ONLY : on ne met plus activeStream, on lance VLC.)
-  if (!TEMP_VLC_ONLY && activeStream) {
-    return (
-      <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <NemoPlayer
-          url={activeStream.url}
-          title={activeStream.title}
-          poster={movie?.backdrop_path ? (tmdbImage.backdrop(movie.backdrop_path, "w1280") ?? undefined) : undefined}
-          tmdbId={activeStream.tmdbId}
-          mediaType="movie"
-          startTime={activeStream.startTime}
-          onBack={() => setActiveStream(null)}
-          onChangeSource={() => setActiveStream(null)}
-          className="w-full h-full"
-        />
-      </div>
-    );
-  }
 
   if (!open || movieId <= 0) return null;
 
@@ -130,15 +90,6 @@ export function MovieWatchModal({ open, onClose, movieId, onDownloadToJellyfin: 
         title={title}
         tmdbId={movie.id}
         mediaType="movie"
-        onSelectStream={(stream) => {
-          saveLastStream(movie.id, "movie", stream.url);
-          onClose();
-          if (TEMP_VLC_ONLY) {
-            window.location.href = `vlc://${stream.url}`;
-            return;
-          }
-          setActiveStream({ url: stream.url, title, tmdbId: movie.id, startTime: resumeTime });
-        }}
         onDownloadToJellyfin={handleDownloadToJellyfin}
       />
       {downloadMediaInfo && (

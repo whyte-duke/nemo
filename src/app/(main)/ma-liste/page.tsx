@@ -10,7 +10,6 @@ import { useMyLists, useToggleItemInList, useDeleteList, useUpdateList } from "@
 import { useStream } from "@/providers/stream-provider";
 import { MovieWatchModal } from "@/components/player/MovieWatchModal";
 import { StreamModal } from "@/components/player/StreamModal";
-import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { CreateListModal } from "@/components/lists/CreateListModal";
 import { tmdbImage } from "@/lib/tmdb/client";
 import type { ListSummary } from "@/hooks/use-lists";
@@ -116,7 +115,6 @@ export default function MesListesPage() {
   const { resolveStreams } = useStream();
   const [watchMovieId, setWatchMovieId] = useState<number | null>(null);
   const [streamOpen, setStreamOpen] = useState(false);
-  const [activeStream, setActiveStream] = useState<string | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [renamingListId, setRenamingListId] = useState<string | null>(null);
@@ -138,19 +136,6 @@ export default function MesListesPage() {
     },
     []
   );
-
-  if (activeStream) {
-    return (
-      <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <NemoPlayer
-          url={activeStream}
-          title={activeTitle}
-          onBack={() => setActiveStream(null)}
-          className="w-full h-full"
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="bg-[#0b0d12] min-h-dvh">
@@ -323,7 +308,6 @@ export default function MesListesPage() {
       <StreamModal
         open={streamOpen}
         onClose={() => setStreamOpen(false)}
-        onSelectStream={(stream) => { setActiveStream(stream.url); setStreamOpen(false); }}
         title={activeTitle}
       />
     </div>

@@ -6,7 +6,6 @@ import { MediaRow } from "@/components/media/MediaRow";
 import { DetailModal } from "@/components/media/DetailModal";
 import { MovieWatchModal } from "@/components/player/MovieWatchModal";
 import { StreamModal } from "@/components/player/StreamModal";
-import { NemoPlayer } from "@/components/player/NemoPlayer";
 import { ContinueWatchingRow } from "@/components/home/ContinueWatchingRow";
 import {
   useTrending,
@@ -493,7 +492,6 @@ export function HomeContent() {
   const [detailId, setDetailId] = useState<{ id: number; type: "movie" | "tv" } | null>(null);
   const [watchMovieId, setWatchMovieId] = useState<number | null>(null);
   const [streamOpen, setStreamOpen] = useState(false);
-  const [activeStream, setActiveStream] = useState<string | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
 
   // Toggle "Masquer les films vus" (persisté en localStorage)
@@ -685,14 +683,6 @@ export function HomeContent() {
     [resolveStreams]
   );
 
-  if (activeStream) {
-    return (
-      <div className="fixed inset-0 z-(--z-overlay) bg-black">
-        <NemoPlayer url={activeStream} title={activeTitle} onBack={() => setActiveStream(null)} className="w-full h-full" />
-      </div>
-    );
-  }
-
   return (
     <div className="bg-nemo-bg">
       {/* Hero */}
@@ -733,7 +723,7 @@ export function HomeContent() {
         <JellyfinContinueRow
           onPlay={(url, title) => {
             setActiveTitle(title);
-            setActiveStream(url);
+            void url;
           }}
         />
       </div>
@@ -812,7 +802,6 @@ export function HomeContent() {
       <StreamModal
         open={streamOpen}
         onClose={() => setStreamOpen(false)}
-        onSelectStream={(s) => { setActiveStream(s.url); setStreamOpen(false); }}
         title={activeTitle}
       />
     </div>

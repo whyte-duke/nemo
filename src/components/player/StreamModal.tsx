@@ -4,8 +4,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
-  X, Play, Loader2, AlertCircle, ChevronDown, ChevronUp,
-  HardDrive, Users, MoreVertical, ExternalLink, Download,
+  X, Loader2, AlertCircle, ChevronDown, ChevronUp,
+  HardDrive, Users, ExternalLink, Download,
 } from "lucide-react";
 import { cn, getLanguageFlag } from "@/lib/utils";
 import { useStream } from "@/providers/stream-provider";
@@ -216,57 +216,42 @@ function AdvancedSheet({ stream, title, onClose, onDownloadToJellyfin }: Advance
 
 interface StreamCardProps {
   stream: ParsedStream;
-  onSelect: (stream: ParsedStream) => void;
-  onAdvanced: (stream: ParsedStream) => void;
+  onOpen: (stream: ParsedStream) => void;
 }
 
-function StreamCard({ stream, onSelect, onAdvanced }: StreamCardProps) {
+function StreamCard({ stream, onOpen }: StreamCardProps) {
   const sourceIcon = stream.source ? (SOURCE_ICONS[stream.source] ?? "📦") : null;
 
   return (
-    <div className="flex items-center gap-2 group">
-      <button
-        onClick={() => onSelect(stream)}
-        className="flex-1 flex items-center gap-3 p-3 rounded-xl border border-white/6 hover:border-nemo-accent/30 hover:bg-nemo-accent/5 transition-all text-left"
-      >
-        <span className={cn("shrink-0 w-14 text-center px-2 py-1 rounded-lg border text-xs font-bold tabular-nums", QUALITY_COLORS[stream.quality])}>
-          {stream.quality}
-        </span>
+    <button
+      onClick={() => onOpen(stream)}
+      className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/6 hover:border-nemo-accent/30 hover:bg-nemo-accent/5 transition-all text-left"
+    >
+      <span className={cn("shrink-0 w-14 text-center px-2 py-1 rounded-lg border text-xs font-bold tabular-nums", QUALITY_COLORS[stream.quality])}>
+        {stream.quality}
+      </span>
 
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-semibold", LANG_COLORS[stream.language])}>
-              {getLanguageFlag(stream.language)} {stream.language}
-            </span>
-            {stream.codec && (
-              <span className="text-white/40 text-xs border border-white/15 px-1.5 py-0.5 rounded">{stream.codec}</span>
-            )}
-            {stream.hdr && stream.hdr !== "SDR" && (
-              <span className="text-purple-300 text-xs border border-purple-400/30 bg-purple-400/10 px-1.5 py-0.5 rounded">{stream.hdr}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 text-xs text-white/35">
-            {stream.source && <span className="flex items-center gap-1">{sourceIcon} {stream.source}</span>}
-            {stream.sizeLabel && <span className="flex items-center gap-1 tabular-nums"><HardDrive className="size-3" />{stream.sizeLabel}</span>}
-            {stream.seeders !== null && <span className="flex items-center gap-1 tabular-nums"><Users className="size-3" />{stream.seeders}</span>}
-          </div>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-semibold", LANG_COLORS[stream.language])}>
+            {getLanguageFlag(stream.language)} {stream.language}
+          </span>
+          {stream.codec && (
+            <span className="text-white/40 text-xs border border-white/15 px-1.5 py-0.5 rounded">{stream.codec}</span>
+          )}
+          {stream.hdr && stream.hdr !== "SDR" && (
+            <span className="text-purple-300 text-xs border border-purple-400/30 bg-purple-400/10 px-1.5 py-0.5 rounded">{stream.hdr}</span>
+          )}
         </div>
-
-        <div className="shrink-0 flex items-center justify-center size-8 rounded-full bg-white/0 group-hover:bg-nemo-accent text-white/0 group-hover:text-black transition-all duration-200">
-          <Play className="size-3.5 fill-current ml-0.5" />
+        <div className="flex items-center gap-3 text-xs text-white/35">
+          {stream.source && <span className="flex items-center gap-1">{sourceIcon} {stream.source}</span>}
+          {stream.sizeLabel && <span className="flex items-center gap-1 tabular-nums"><HardDrive className="size-3" />{stream.sizeLabel}</span>}
+          {stream.seeders !== null && <span className="flex items-center gap-1 tabular-nums"><Users className="size-3" />{stream.seeders}</span>}
         </div>
-      </button>
+      </div>
 
-      {/* Bouton options avancées */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onAdvanced(stream); }}
-        className="shrink-0 flex items-center justify-center size-8 rounded-lg text-white/20 hover:text-white/60 hover:bg-white/6 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-        aria-label="Options avancées"
-      >
-        <MoreVertical className="size-4" />
-      </button>
-    </div>
+      <ExternalLink className="size-4 text-white/20 shrink-0" />
+    </button>
   );
 }
 
@@ -275,25 +260,19 @@ function StreamCard({ stream, onSelect, onAdvanced }: StreamCardProps) {
 interface StreamModalProps {
   open: boolean;
   onClose: () => void;
-  onSelectStream: (stream: ParsedStream) => void;
   onDownloadToJellyfin?: (stream: ParsedStream) => void;
   title?: string;
   tmdbId?: number;
   mediaType?: "movie" | "tv";
 }
 
-export function StreamModal({ open, onClose, onSelectStream, onDownloadToJellyfin, title, tmdbId: _tmdbId, mediaType: _mediaType }: StreamModalProps) {
+export function StreamModal({ open, onClose, onDownloadToJellyfin, title, tmdbId: _tmdbId, mediaType: _mediaType }: StreamModalProps) {
   const { state } = useStream();
   const [showAll, setShowAll] = useState(false);
   const [advancedStream, setAdvancedStream] = useState<ParsedStream | null>(null);
 
   const displayedStreams = showAll ? state.streams : state.streams.slice(0, 8);
   const hasMore = state.streams.length > 8;
-
-  const handleSelect = (stream: ParsedStream) => {
-    onSelectStream(stream);
-    onClose();
-  };
 
   const handleOpenChange = (o: boolean) => {
     if (!o) {
@@ -365,14 +344,13 @@ export function StreamModal({ open, onClose, onSelectStream, onDownloadToJellyfi
                   {!state.isLoading && state.streams.length > 0 && (
                     <>
                       <p className="text-white/30 text-xs tabular-nums pb-1">
-                        {state.streams.length} source{state.streams.length > 1 ? "s" : ""} — cliquer pour lire
+                        {state.streams.length} source{state.streams.length > 1 ? "s" : ""} — choisir une source
                       </p>
                       {displayedStreams.map((stream) => (
                         <StreamCard
                           key={stream.id}
                           stream={stream}
-                          onSelect={handleSelect}
-                          onAdvanced={setAdvancedStream}
+                          onOpen={setAdvancedStream}
                         />
                       ))}
                       {hasMore && (
