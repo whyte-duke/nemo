@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import type { ParsedStream, StreamFusionConfig } from "@/types/stremio";
-import { fetchStreams, parseStreams, buildDefaultConfig } from "@/lib/stremio/resolver";
+import type { ParsedStream } from "@/types/stremio";
+import { fetchStreams, parseStreams } from "@/lib/stremio/resolver";
 
 interface StreamState {
   streams: ParsedStream[];
@@ -15,12 +15,9 @@ interface StreamContextValue {
   state: StreamState;
   resolveStreams: (imdbId: string, mediaType?: "movie" | "series") => Promise<void>;
   clearStreams: () => void;
-  config: StreamFusionConfig;
 }
 
 const StreamContext = createContext<StreamContextValue | null>(null);
-
-const DEFAULT_CONFIG = buildDefaultConfig();
 
 export function StreamProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<StreamState>({
@@ -35,7 +32,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       setState({ streams: [], isLoading: true, error: null, currentImdbId: imdbId });
 
       try {
-        const response = await fetchStreams(imdbId, DEFAULT_CONFIG, mediaType);
+        const response = await fetchStreams(imdbId, mediaType);
         const parsed = parseStreams(response);
         setState({ streams: parsed, isLoading: false, error: null, currentImdbId: imdbId });
       } catch (err) {
@@ -55,7 +52,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <StreamContext.Provider value={{ state, resolveStreams, clearStreams, config: DEFAULT_CONFIG }}>
+    <StreamContext.Provider value={{ state, resolveStreams, clearStreams }}>
       {children}
     </StreamContext.Provider>
   );

@@ -6,37 +6,27 @@ import type {
   StreamLanguage,
   StreamCodec,
   StreamHDR,
-  StreamFusionConfig,
 } from "@/types/stremio";
 
-const STREAMFUSION_BASE =
-  process.env.NEXT_PUBLIC_STREAMFUSION_BASE ?? "https://stream-fusion.stremiofr.com";
+const FRENCHIO_URL = process.env.NEXT_PUBLIC_FRENCHIO_URL ?? "";
 
-// ─── Encodage de la configuration en Base64 standard ─────────────────────────
+// ─── Construction de l'URL FrenchIO ──────────────────────────────────────────
 
-export function encodeConfig(config: StreamFusionConfig): string {
-  const json = JSON.stringify(config);
-  return btoa(unescape(encodeURIComponent(json)));
-}
-
-export function buildStreamFusionUrl(
-  config: StreamFusionConfig,
+export function buildFrenchioUrl(
   imdbId: string,
   mediaType: "movie" | "series" = "movie"
 ): string {
-  const encodedConfig = encodeConfig(config);
-  return `${STREAMFUSION_BASE}/${encodedConfig}/stream/${mediaType}/${imdbId}.json`;
+  return `${FRENCHIO_URL}/stream/${mediaType}/${imdbId}.json`;
 }
 
 // ─── Fetch des flux depuis l'addon Stremio ────────────────────────────────────
 
 export async function fetchStreams(
   imdbId: string,
-  config: StreamFusionConfig,
   mediaType: "movie" | "series" = "movie",
   signal?: AbortSignal
 ): Promise<StremioStreamsResponse> {
-  const url = buildStreamFusionUrl(config, imdbId, mediaType);
+  const url = buildFrenchioUrl(imdbId, mediaType);
 
   const timeoutSignal = AbortSignal.timeout(15_000);
   const combinedSignal = signal
@@ -49,7 +39,7 @@ export async function fetchStreams(
   });
 
   if (!res.ok) {
-    throw new Error(`StreamFusion error: ${res.status}`);
+    throw new Error(`FrenchIO error: ${res.status}`);
   }
 
   return res.json() as Promise<StremioStreamsResponse>;
@@ -116,6 +106,7 @@ function parseSource(text: string): string | null {
     "Sharewood", "Zilean",
     "Torr9", "1337x", "RARBG", "Jackett",
     "AllDebrid", "RealDebrid",
+    "ABN", "Lacale", "C411", "Unit3D",
   ];
   for (const src of sources) {
     if (new RegExp(src, "i").test(text)) return src;
@@ -173,44 +164,3 @@ export function parseStreams(response: StremioStreamsResponse): ParsedStream[] {
     });
 }
 
-// ─── Configuration StreamFusion par défaut ────────────────────────────────────
-// addonHost est remplacé dynamiquement par NEXT_PUBLIC_STREAMFUSION_BASE
-
-export function buildDefaultConfig(): StreamFusionConfig {
-  return {
-    addonHost: STREAMFUSION_BASE,
-    apiKey: process.env.NEXT_PUBLIC_STREAMFUSION_API_KEY ?? "",
-    service: ["AllDebrid"],
-    RDToken: "",
-    ADToken: process.env.NEXT_PUBLIC_ALLDEBRID_TOKEN ?? "",
-    TBToken: "",
-    PMToken: "",
-    TBUsenet: false,
-    TBSearch: false,
-    maxSize: 150,
-    exclusionKeywords: [],
-    languages: ["fr"],
-    sort: "quality",
-    resultsPerQuality: 2,
-    maxResults: 5,
-    minCachedResults: 10,
-    exclusion: ["480p", "cam", "unknown"],
-    cacheUrl: "https://stremio-jackett-cacher.elfhosted.com/",
-    cache: true,
-    zilean: true,
-    yggflix: true,
-    sharewood: true,
-    yggtorrentCtg: true,
-    yggflixCtg: false,
-    torrenting: false,
-    debrid: true,
-    metadataProvider: "tmdb",
-    debridDownloader: "AllDebrid",
-    stremthru: false,
-    stremthruUrl: "https://stremthru.stremiofr.com",
-    debridlinkApiKey: "",
-    easydebridApiKey: "",
-    offcloudCredentials: "",
-    pikpakCredentials: "",
-  };
-}

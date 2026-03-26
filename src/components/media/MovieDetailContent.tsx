@@ -27,7 +27,7 @@ import type { TMDbMovieDetail } from "@/types/tmdb";
 import type { ParsedStream } from "@/types/stremio";
 
 /** TEMPORAIRE: true = sélection source → lance VLC uniquement (pas le player in-app). Remettre à false pour réactiver NemoPlayer. */
-const TEMP_VLC_ONLY = true;
+const TEMP_VLC_ONLY = false;
 
 interface Props {
   movie: TMDbMovieDetail;

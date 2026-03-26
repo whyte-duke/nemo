@@ -45,45 +45,6 @@ export interface ParsedStream {
   raw: StremioRawStream;
 }
 
-// ─── Configuration StreamFusion (format réel de l'API) ────────────────────────
-
-export interface StreamFusionConfig {
-  addonHost: string;
-  apiKey: string;
-  service: string[];
-  RDToken: string;
-  ADToken: string;
-  TBToken: string;
-  PMToken: string;
-  TBUsenet: boolean;
-  TBSearch: boolean;
-  maxSize: number;
-  exclusionKeywords: string[];
-  languages: string[];
-  sort: "quality" | "size" | "seeders";
-  resultsPerQuality: number;
-  maxResults: number;
-  minCachedResults: number;
-  exclusion: string[];
-  cacheUrl: string;
-  cache: boolean;
-  zilean: boolean;
-  yggflix: boolean;
-  sharewood: boolean;
-  yggtorrentCtg: boolean;
-  yggflixCtg: boolean;
-  torrenting: boolean;
-  debrid: boolean;
-  metadataProvider: string;
-  debridDownloader: string;
-  stremthru: boolean;
-  stremthruUrl: string;
-  debridlinkApiKey: string;
-  easydebridApiKey: string;
-  offcloudCredentials: string;
-  pikpakCredentials: string;
-}
-
 // ─── Résolution d'un flux ─────────────────────────────────────────────────────
 
 export interface StreamResolutionResult {

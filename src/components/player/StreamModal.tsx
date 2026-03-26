@@ -62,6 +62,11 @@ const SOURCE_ICONS: Record<string, string> = {
   Zilean:    "⚡",
   AllDebrid: "⚡",
   RealDebrid:"🔴",
+  ABN:       "🇫🇷",
+  Lacale:    "🇫🇷",
+  C411:      "📡",
+  Unit3D:    "🎯",
+  Torr9:     "🌊",
 };
 
 // ── AdvancedSheet — options avancées pour une source ────────────────────────
@@ -360,13 +365,13 @@ export function StreamModal({ open, onClose, onSelectStream, onDownloadToJellyfi
                   {!state.isLoading && state.streams.length > 0 && (
                     <>
                       <p className="text-white/30 text-xs tabular-nums pb-1">
-                        {state.streams.length} source{state.streams.length > 1 ? "s" : ""} — cliquer pour ouvrir (VLC, M3U…)
+                        {state.streams.length} source{state.streams.length > 1 ? "s" : ""} — cliquer pour lire
                       </p>
                       {displayedStreams.map((stream) => (
                         <StreamCard
                           key={stream.id}
                           stream={stream}
-                          onSelect={(s) => setAdvancedStream(s)}
+                          onSelect={handleSelect}
                           onAdvanced={setAdvancedStream}
                         />
                       ))}

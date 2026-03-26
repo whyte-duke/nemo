@@ -23,7 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useStartBatchDownload, useStartDownload } from "@/hooks/use-downloads";
-import { fetchStreams, parseStreams, buildDefaultConfig } from "@/lib/stremio/resolver";
+import { fetchStreams, parseStreams } from "@/lib/stremio/resolver";
 import type { ParsedStream, StreamQuality, StreamLanguage } from "@/types/stremio";
 import type { ProbeStream } from "@/types/download";
 import type { TMDbEpisode } from "@/types/tmdb";
@@ -263,8 +263,6 @@ export function SeasonDownloadModal({
   const [selectedTracks, setSelectedTracks] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  const CONFIG = buildDefaultConfig();
-
   // ── Reset à la fermeture ────────────────────────────────────────────────────
   const handleClose = useCallback(() => {
     abortRef.current?.abort();
@@ -312,7 +310,7 @@ export function SeasonDownloadModal({
         const stremioId = `${imdbId}:${seasonNumber}:${ep.episode_number}`;
 
         try {
-          const response = await fetchStreams(stremioId, CONFIG, "series", ctrl.signal);
+          const response = await fetchStreams(stremioId, "series", ctrl.signal);
           const parsed = parseStreams(response);
           results.push({ episodeNumber: ep.episode_number, streams: parsed, error: false });
 
