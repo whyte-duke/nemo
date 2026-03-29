@@ -8,41 +8,52 @@ import type {
   StreamHDR,
 } from "@/types/stremio";
 
-const FRENCHIO_URL = process.env.NEXT_PUBLIC_FRENCHIO_URL ?? "";
+// ─── Providers Stremio ───────────────────────────────────────────────────────
 
-// ─── Construction de l'URL FrenchIO ──────────────────────────────────────────
+const PROVIDERS: Array<{ name: string; baseUrl: string }> = [
+  { name: "FrenchIO",  baseUrl: process.env.NEXT_PUBLIC_FRENCHIO_URL  ?? "" },
+  { name: "Comet",     baseUrl: process.env.NEXT_PUBLIC_COMET_URL     ?? "" },
+  { name: "Youtubio",  baseUrl: process.env.NEXT_PUBLIC_YOUTUBIO_URL  ?? "" },
+  { name: "Wastream",  baseUrl: process.env.NEXT_PUBLIC_WASTREAM_URL  ?? "" },
+].filter((p) => p.baseUrl !== "");
 
-export function buildFrenchioUrl(
-  imdbId: string,
-  mediaType: "movie" | "series" = "movie"
-): string {
-  return `${FRENCHIO_URL}/stream/${mediaType}/${imdbId}.json`;
-}
-
-// ─── Fetch des flux depuis l'addon Stremio ────────────────────────────────────
+// ─── Fetch des flux depuis tous les addons Stremio ────────────────────────────
 
 export async function fetchStreams(
   imdbId: string,
   mediaType: "movie" | "series" = "movie",
   signal?: AbortSignal
 ): Promise<StremioStreamsResponse> {
-  const url = buildFrenchioUrl(imdbId, mediaType);
-
-  const timeoutSignal = AbortSignal.timeout(15_000);
+  const timeoutSignal = AbortSignal.timeout(20_000);
   const combinedSignal = signal
     ? AbortSignal.any([signal, timeoutSignal])
     : timeoutSignal;
 
-  const res = await fetch(url, {
-    next: { revalidate: 300 },
-    signal: combinedSignal,
-  });
+  const results = await Promise.allSettled(
+    PROVIDERS.map(({ name, baseUrl }) => {
+      const url = `${baseUrl}/stream/${mediaType}/${imdbId}.json`;
+      return fetch(url, { next: { revalidate: 300 }, signal: combinedSignal })
+        .then((res) => {
+          if (!res.ok) throw new Error(`${name} error: ${res.status}`);
+          return res.json() as Promise<StremioStreamsResponse>;
+        });
+    })
+  );
 
-  if (!res.ok) {
-    throw new Error(`FrenchIO error: ${res.status}`);
+  const seen = new Set<string>();
+  const merged: StremioRawStream[] = [];
+
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    for (const stream of result.value.streams) {
+      const key = stream.url ?? stream.infoHash ?? "";
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(stream);
+    }
   }
 
-  return res.json() as Promise<StremioStreamsResponse>;
+  return { streams: merged };
 }
 
 // ─── Parsing des flux bruts ───────────────────────────────────────────────────
